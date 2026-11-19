@@ -1,0 +1,165 @@
+{
+  "fixtures": 20,
+  "online_audits": 600,
+  "response_measurements": 30,
+  "summary_rows": 60,
+  "all_proofs_accepted": true,
+  "statistics_match_raw_samples": true,
+  "sha256": {
+    "runtime.csv": "7a1a00ebf7cb5858257a021e079e0b3460bf7a8eb59932956809f22489b86578",
+    "runtime.csv.samples.csv": "9dbdb4d8b8d003e24c6ab1b70f475ea405138dc802cd29ffd1361c49ca33bc56",
+    "response.csv": "d2c92f239b7fa332540e944474da1665ae4593a31d203f14bfb0641c88913594"
+  },
+  "code_checks": {
+    "go_test": "passed",
+    "go_vet": "passed",
+    "onchain_go_vet": "passed",
+    "ios_arm64_archive": "passed",
+    "python_compile": "passed",
+    "renamed_wire_round_trips": "passed",
+    "renamed_onchain_smoke": "3 valid transactions; 21 negative cases rejected"
+  },
+  "document": {
+    "pages": 14,
+    "figures": 3,
+    "runtime_panels": 3,
+    "inline_figures": true,
+    "layout_checked": true,
+    "tex_sha256": "22326ea4bc51bac71409fdcf743221d28d50526d723d3470a05da1a523b93bbd",
+    "pdf_sha256": "87bdfec61c676005c276dac82a834716f69dc01385115cbfdc5540ae5994f0e3",
+    "communication_panels": 1,
+    "sampling_analysis_section": "VI-B",
+    "sampling_lemma": 2,
+    "sampling_remark": 1,
+    "tables": 5,
+    "privacy_scope": "marginal evaluation masking; full-transcript confidentiality not claimed",
+    "security_model_style": "bold property labels followed by normal paragraphs; no Definition environments",
+    "public_verifiability_property_and_proof": true,
+    "runtime_figure": 2,
+    "communication_figure": 3,
+    "sampling_illustration": false,
+    "feature_comparison_table": false,
+    "evaluation_structure": [
+      "Experimental Setup",
+      "Sampling Coverage and Parameter Selection",
+      "PC Results",
+      "On-Chain Costs",
+      "iPhone Costs"
+    ],
+    "table_linked_result_analysis": true,
+    "benchmark_data_unchanged": true,
+    "runtime_style": {
+      "panel_width_textwidth": 0.33,
+      "bar_width_pt": 4,
+      "store_unit_in_subcaption": true,
+      "all_units_in_subcaptions": true
+    },
+    "communication_style": {
+      "width_linewidth": 0.8,
+      "height_linewidth": 0.66,
+      "bar_width_pt": 8,
+      "bar_gap_pt": 0.4
+    },
+    "scheme_name": "MultiAudit",
+    "canonical_pdf": "output/pdf/MultiAudit.pdf",
+    "references": 45,
+    "all_references_cited": true,
+    "bibliography_in_first_citation_order": true,
+    "publisher_round_trip": "passed",
+    "related_work_categories": [
+      "Merkle-Based Tag Authentication",
+      "Polynomial and Vector Commitment Tags",
+      "PDP with Dynamic Updates",
+      "Multi-File and Multi-Replica Auditing",
+      "Proof-Generation Efficiency"
+    ],
+    "related_work_word_count": 893,
+    "mobile_table": {
+      "label": "tab:mobile_costs",
+      "number": "V",
+      "page": 13,
+      "all_columns_centered": true
+    },
+    "onchain_table": {
+      "label": "tab:onchain_cost",
+      "number": "IV",
+      "page": 12
+    },
+    "store_phase_and_cmm_scope_explained": true,
+    "bibliography_columns_balanced": true,
+    "canonical_tex": "paper/MultiAudit.tex"
+  },
+  "communication_model": {
+    "scope": "Merkle-authenticated constructions",
+    "schemes": [
+      "XuTIFS26",
+      "YuTC25",
+      "MultiAudit"
+    ],
+    "axis": "linear MB",
+    "placement": "separate single-column figure",
+    "group_bytes": 64,
+    "scalar_digest_bytes": 32,
+    "multiaudit_auxiliary_hashes": "expected count",
+    "framing": "excluded"
+  },
+  "onchain": {
+    "measurement_source": "local_evm_transaction_receipts",
+    "parameters": {
+      "m": 1,
+      "B_MB": 10,
+      "s": 80,
+      "c": 690,
+      "n": 3907
+    },
+    "successful_verification_transactions": 15,
+    "negative_checks_rejected": 21,
+    "native_and_contract_proofs_accepted": true,
+    "source_fingerprints_match": true,
+    "hardfork": "shanghai",
+    "sha256": {
+      "gas.csv": "27c66d43f52f5f151492e207f9c77879167ab5739e04fe18b97ab92de43967d7",
+      "metadata.json": "0c0a847fce7e065abea097b100494ab5bc0bca9a0313606e83fabb3fac289cb6"
+    },
+    "source_verification": "recorded sources checked against measurement_sources.zip; current rename fingerprints checked by source_rename.json"
+  },
+  "mobile": {
+    "platform": "physical iPhone 13",
+    "product_type": "iPhone14,5",
+    "iOS": "26.6.2",
+    "parameters": {
+      "m": 10,
+      "B_MB": 10,
+      "encoded_bytes_per_file": 10001920,
+      "s": 80,
+      "c": 690,
+      "n": 3907
+    },
+    "measured_audits": 90,
+    "warmup_audits_retained": 9,
+    "owner_preprocessed_files": 30,
+    "all_measured_audits_verified": true,
+    "source_fingerprints_match": true,
+    "measurement_fingerprints_match": true,
+    "simulator_measurements": false,
+    "store_scope": "native tag and full-tree preprocessing; one complete ten-file pass per scheme",
+    "communication_scope": "serialized file and signed-registry upload bodies; HTTP/TCP headers excluded",
+    "file_upload_bytes_per_scheme": 102520040,
+    "core_verify_scope": "native verification; decoding and network excluded",
+    "client_verify_scope": "decoding plus shared Swift/Go interface and native verification; network excluded",
+    "cloud_role": "ProofGen with public parameters",
+    "energy_measured": false,
+    "provenance": "mobile/provenance.json",
+    "sha256": {
+      "multiaudit_iphone13.json": "c0796ade42ab1c9bdf2f2b5b95ca081de9a265d45b43173ddab1de77b9539dcb",
+      "xu_iphone13.json": "7f714a18ab11f416a572df8bf8feb71fcb27f8991d55a12752760840b09b92dc",
+      "yu_iphone13.json": "d13e850a7adb4bd2ba3db601ba2736c075afa9c1824318fc43bb7c7735ff7765",
+      "multiaudit_registry.json": "d5a957dc25eae3e8caf58a77f73855efe32bc380a9519fe8efd68a1b99ec4f4c",
+      "xu_registry.json": "7dbf1b23499b8776ac301637f3ae44a7ea306c41c7847d9db22e7a6ef816461d",
+      "yu_registry.json": "69af859935a4e61cf19f157a9f34f5e753d0b8d865cb37936622d7e11180e1fd",
+      "comparison.csv": "5b0b28211c6349abb5693101487b4239ca30481787a446f1c41ff965310f8665",
+      "comparison.json": "f83f52cb50e06e5cdeb0cbe26a6542510a4b2fb32f227c73ec78d14cfaf79f6f"
+    },
+    "source_verification": "recorded sources checked against measurement_sources.zip; current rename fingerprints checked by source_rename.json"
+  }
+}

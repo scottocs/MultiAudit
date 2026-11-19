@@ -1,0 +1,16 @@
+{
+  "setup_words_before": 660,
+  "setup_words_after": 386,
+  "setup_reduction_percent": 41.515151515151516,
+  "subsections": [
+    "Experimental Setup",
+    "Sampling Coverage and Parameter Selection",
+    "PC Results",
+    "On-Chain Costs",
+    "iPhone Costs"
+  ],
+  "figures_unchanged": true,
+  "measurements_unchanged": true,
+  "mobile_table_columns_centered": true,
+  "store_phase_and_cmm_scope_explained": true
+}

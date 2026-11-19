@@ -1,0 +1,179 @@
+{
+  "scheme_name": "MultiAudit",
+  "measurement_key": "MultiAudit",
+  "fixtures": 20,
+  "online_audits": 600,
+  "response_measurements": 30,
+  "summary_rows": 60,
+  "baseline_ms": {
+    "XuTIFS26": {
+      "Store": 8418.948917,
+      "ProofGen": 130.247917,
+      "Verify": 197.532771
+    },
+    "ZhangTPDS23": {
+      "Store": 18263.986042,
+      "ProofGen": 259.199375,
+      "Verify": 1095.286542
+    },
+    "YuTC25": {
+      "Store": 8458.037166,
+      "ProofGen": 84.578771,
+      "Verify": 390.58075
+    },
+    "MiaoSCIS2026": {
+      "Store": 410547.791,
+      "ProofGen": 210.570167,
+      "Verify": 1098.256375
+    },
+    "MultiAudit": {
+      "Store": 8568.148625,
+      "ProofGen": 93.157875,
+      "Verify": 196.838437
+    }
+  },
+  "mean_response_bytes": 3474646.6666666665,
+  "response_reduction_vs_xu_percent": 71.9076093518231,
+  "figure_panels": [
+    "Store",
+    "ProofGen",
+    "Verify",
+    "Audit response"
+  ],
+  "communication_payload_MB": {
+    "XuTIFS26": {
+      "10": 3.09216,
+      "20": 6.18432,
+      "30": 9.27648,
+      "40": 12.36864
+    },
+    "YuTC25": {
+      "10": 3.11744,
+      "20": 6.23488,
+      "30": 9.35232,
+      "40": 12.46976
+    },
+    "MultiAudit": {
+      "10": 0.8701729859182904,
+      "20": 1.740217971836581,
+      "30": 2.6102629577548715,
+      "40": 3.4803079436731617
+    }
+  },
+  "evaluation_words": 1714,
+  "evaluation_structure": [
+    "Experimental Setup",
+    "Sampling Coverage and Parameter Selection",
+    "PC Results",
+    "On-Chain Costs",
+    "iPhone Costs"
+  ],
+  "mobile_comparison": {
+    "MultiAudit": {
+      "scheme": "MultiAudit",
+      "m": 10,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "encoded_file_bytes": 10001920,
+      "store_core_ms": 3242.951083,
+      "input_construction_ms": 1819.643334,
+      "upload_encoding_ms": 347.90821,
+      "store_process_cpu_ms": 8138.404000000001,
+      "file_upload_bytes": 102520040,
+      "initial_registry_bytes_fixed_width": 8516,
+      "final_registry_bytes_observed": 8516,
+      "store_application_upload_bytes": 102537072,
+      "verify_core_median_ms": 122.2213125,
+      "verify_core_p25_ms": 119.3071775,
+      "verify_core_p75_ms": 122.60355225,
+      "verify_client_median_ms": 157.52531199902296,
+      "verify_client_p25_ms": 157.17001048848033,
+      "verify_client_p75_ms": 158.1936977468431,
+      "measured_verify_rounds": 30,
+      "maximum_observed_thermal_state": 1
+    },
+    "Xu": {
+      "scheme": "Xu",
+      "m": 10,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "encoded_file_bytes": 10001920,
+      "store_core_ms": 3225.342374,
+      "input_construction_ms": 1819.264623,
+      "upload_encoding_ms": 341.995541,
+      "store_process_cpu_ms": 9930.563000000002,
+      "file_upload_bytes": 102520040,
+      "initial_registry_bytes_fixed_width": 8452,
+      "final_registry_bytes_observed": 8452,
+      "store_application_upload_bytes": 102536944,
+      "verify_core_median_ms": 129.13177050000002,
+      "verify_core_p25_ms": 128.80545850000001,
+      "verify_core_p75_ms": 129.4059375,
+      "verify_client_median_ms": 206.2572709992528,
+      "verify_client_p25_ms": 205.722343493253,
+      "verify_client_p75_ms": 207.00314525142312,
+      "measured_verify_rounds": 30,
+      "maximum_observed_thermal_state": 1
+    },
+    "Yu": {
+      "scheme": "Yu",
+      "m": 10,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "encoded_file_bytes": 10001920,
+      "store_core_ms": 3210.535918,
+      "input_construction_ms": 1822.22725,
+      "upload_encoding_ms": 334.503959,
+      "store_process_cpu_ms": 9719.544999999998,
+      "file_upload_bytes": 102520040,
+      "initial_registry_bytes_fixed_width": 8179,
+      "final_registry_bytes_observed": 8179,
+      "store_application_upload_bytes": 102536398,
+      "verify_core_median_ms": 194.71631250000002,
+      "verify_core_p25_ms": 194.456261,
+      "verify_core_p75_ms": 195.35513525,
+      "verify_client_median_ms": 273.128458507359,
+      "verify_client_p25_ms": 272.37657349556684,
+      "verify_client_p75_ms": 274.2364584989846,
+      "measured_verify_rounds": 30,
+      "maximum_observed_thermal_state": 0
+    }
+  },
+  "onchain_comparison": {
+    "measurement_source": "local_evm_transaction_receipts",
+    "m": 1,
+    "s": 80,
+    "B_MB": 10,
+    "c": 690,
+    "audits_per_scheme": 5,
+    "results": {
+      "XuTIFS26": {
+        "calldata_bytes": 353572,
+        "execution_gas": 16599052,
+        "receipt_gas": 22010750,
+        "eip7623_projected_gas": 22010750,
+        "receipt_gas_min": 22010250,
+        "receipt_gas_max": 22011608
+      },
+      "YuTC25": {
+        "calldata_bytes": 356100,
+        "execution_gas": 17599795,
+        "receipt_gas": 23054337,
+        "eip7623_projected_gas": 23054337,
+        "receipt_gas_min": 23053595,
+        "receipt_gas_max": 23054575
+      },
+      "MultiAudit": {
+        "calldata_bytes": 130564,
+        "execution_gas": 12685011,
+        "receipt_gas": 14538355,
+        "eip7623_projected_gas": 14538355,
+        "receipt_gas_min": 14517382,
+        "receipt_gas_max": 14617477
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"foldaudit/schemes/benchcore"
+	"multiaudit/schemes/benchcore"
 )
 
 func TestProveDoesNotUseTrapdoorScalars(t *testing.T) {

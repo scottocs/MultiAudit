@@ -11,7 +11,7 @@ import (
 
 	bn256 "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare"
 
-	"foldaudit/schemes/benchcore"
+	"multiaudit/schemes/benchcore"
 )
 
 type Protocol struct {
@@ -85,13 +85,19 @@ func (p *Protocol) Store(blocks [][]*big.Int) (*StoredData, error) {
 	if len(blocks) != p.N {
 		return nil, fmt.Errorf("expected %d blocks", p.N)
 	}
+	for i, block := range blocks {
+		if len(block) != p.S {
+			return nil, fmt.Errorf("block %d: expected %d sectors", i, p.S)
+		}
+	}
+	values := benchcore.CloneStoredMatrix(blocks)
 	out := &StoredData{Blocks: make([]benchcore.Poly, p.N), Tags: make([]*bn256.G1, p.N)}
 	leaves := make([][]byte, p.N)
 	for i, block := range blocks {
 		if len(block) != p.S {
 			return nil, fmt.Errorf("block %d: expected %d sectors", i, p.S)
 		}
-		out.Blocks[i] = benchcore.NewPoly(block)
+		out.Blocks[i] = benchcore.StoredPolynomialView(values[i])
 		// varpi_i is modeled as g^{P_{F_i}(psi)}.
 		out.Tags[i] = p.ownerCommit(out.Blocks[i])
 		// Tag-IMHT is represented by a Merkle tree over tag commitments.
@@ -170,47 +176,46 @@ func (p *Protocol) Prove(stored *StoredData, chal Challenge) (*Proof, error) {
 	eta := benchcore.ScalarFromBytes("yutc25/eta", B.Marshal())
 
 	// The privacy-enhanced variant adds beta*eta as a constant mask.
-	agg := benchcore.NewPoly([]*big.Int{benchcore.Mul(beta, eta)})
+	sum := benchcore.NewPolynomialAccumulator(p.S)
+	sum.AddScaled(benchcore.NewPoly([]*big.Int{benchcore.Mul(beta, eta)}), benchcore.One())
 	openings := make([]TagOpening, len(chal.Indices))
 	for pos, index := range chal.Indices {
 		// P_prf(X)=beta*eta+sum_i a_i P_{F_i}(X).
-		agg = agg.Add(stored.Blocks[index].Scale(chal.Coeffs[pos]))
+		sum.AddScaled(stored.Blocks[index], chal.Coeffs[pos])
 		path, err := stored.Tree.Proof(index)
 		if err != nil {
 			return nil, err
 		}
 		openings[pos] = TagOpening{Index: index, Tag: stored.Tags[index], Path: path}
 	}
-	value := agg.Eval(chal.Z)
-	// Z_prf(X)=(P_prf(X)-P_prf(z))/(X-z).
-	quotient, rem := agg.SubConstant(value).DivLinear(chal.Z)
-	if rem.Sign() != 0 {
-		return nil, fmt.Errorf("nonzero quotient remainder")
-	}
+	agg := sum.Polynomial()
+	// The same synthetic-division kernel returns the masked value and quotient.
+	quotient, value := agg.DivLinear(chal.Z)
 	return &Proof{Quotient: quotient, Openings: openings, Value: value, B: B}, nil
 }
 
 func (p *Protocol) Verify(root []byte, chal Challenge, proof *Proof) bool {
-	if proof == nil || len(proof.Openings) != len(chal.Indices) {
+	if proof == nil || proof.B == nil || len(proof.Openings) != len(chal.Indices) || len(chal.Coeffs) != len(chal.Indices) || len(proof.Quotient.Coeffs)+1 > len(p.SRS) {
 		return false
 	}
-	left := benchcore.G1Zero()
+	points := make([]*bn256.G1, 0, len(proof.Openings)+1)
+	scalars := make([]*big.Int, 0, len(proof.Openings)+1)
 	for pos, opening := range proof.Openings {
 		// Merkle paths authenticate the challenged tag set before algebraic checking.
-		if opening.Index != chal.Indices[pos] || !benchcore.VerifyMerkle(yuLeaf(opening.Tag), root, opening.Path) {
+		if opening.Tag == nil || opening.Index != chal.Indices[pos] || !benchcore.VerifyMerkle(yuLeaf(opening.Tag), root, opening.Path) {
 			return false
 		}
-		left = benchcore.G1Add(left, benchcore.G1Mul(opening.Tag, chal.Coeffs[pos]))
+		points = append(points, opening.Tag)
+		scalars = append(scalars, chal.Coeffs[pos])
 	}
 	eta := benchcore.ScalarFromBytes("yutc25/eta", proof.B.Marshal())
-	left = benchcore.G1Add(left, benchcore.G1Mul(proof.B, eta))
+	points = append(points, proof.B)
+	scalars = append(scalars, eta)
+	left := benchcore.G1MultiExp(points, scalars)
 
 	hz := benchcore.CommitG1(p.SRS, proof.Quotient)
-	hprf := benchcore.G1Zero()
-	for i, coeff := range proof.Quotient.Coeffs {
-		// hprf represents g^{psi*Z_prf(psi)} using the shifted SRS powers.
-		hprf = benchcore.G1Add(hprf, benchcore.G1Mul(p.SRS[i+1], coeff))
-	}
+	// Shifted SRS commitment, with the same MSM policy as all other schemes.
+	hprf := benchcore.CommitG1(p.SRS[1:], proof.Quotient)
 	right := benchcore.G1Add(hprf, benchcore.G1Mul(hz, benchcore.Neg(chal.Z)))
 	right = benchcore.G1Add(right, benchcore.G1Base(proof.Value))
 	return benchcore.G1Eq(left, right)

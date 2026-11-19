@@ -9,7 +9,7 @@ import (
 
 	bn256 "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare"
 
-	"foldaudit/schemes/benchcore"
+	"multiaudit/schemes/benchcore"
 )
 
 type Protocol struct {
@@ -85,13 +85,19 @@ func (p *Protocol) Store(data [][][]*big.Int) (*StoredBatch, error) {
 		if len(data[i]) != p.N {
 			return nil, fmt.Errorf("file %d: expected %d blocks", i, p.N)
 		}
+		for j, block := range data[i] {
+			if len(block) != p.S {
+				return nil, fmt.Errorf("file %d block %d: expected %d sectors", i, j, p.S)
+			}
+		}
+		values := benchcore.CloneStoredMatrix(data[i])
 		file := StoredFile{FileID: []byte(fmt.Sprintf("file-%d", i)), Blocks: make([]benchcore.Poly, p.N), Tags: make([]*bn256.G1, p.N)}
 		leaves := make([][]byte, p.N)
 		for j := 0; j < p.N; j++ {
 			if len(data[i][j]) != p.S {
 				return nil, fmt.Errorf("file %d block %d: expected %d sectors", i, j, p.S)
 			}
-			file.Blocks[j] = benchcore.NewPoly(data[i][j])
+			file.Blocks[j] = benchcore.StoredPolynomialView(values[j])
 			// The stored tag is the KZG-style commitment g^{f_{i,j}(alpha)}.
 			file.Tags[j] = p.ownerCommit(file.Blocks[j])
 			leaves[j] = xuLeaf(file.Tags[j])
@@ -166,22 +172,19 @@ func (p *Protocol) Prove(stored *StoredBatch, chal Challenge) (*Proof, error) {
 	proof := &Proof{Files: make([]FileProof, len(stored.Files))}
 	for i, file := range stored.Files {
 		// For each file, aggregate challenged blocks as f_i(X)=sum_j v_j f_{i,j}(X).
-		agg := benchcore.NewPoly([]*big.Int{benchcore.Zero()})
+		sum := benchcore.NewPolynomialAccumulator(p.S)
 		openings := make([]TagOpening, len(chal.Indices))
 		for pos, index := range chal.Indices {
-			agg = agg.Add(file.Blocks[index].Scale(chal.Coeffs[pos]))
+			sum.AddScaled(file.Blocks[index], chal.Coeffs[pos])
 			path, err := file.Tree.Proof(index)
 			if err != nil {
 				return nil, err
 			}
 			openings[pos] = TagOpening{Index: index, Tag: file.Tags[index], Path: path}
 		}
-		value := agg.Eval(chal.R)
-		// The witness opens f_i at the shared challenge point r.
-		wpoly, rem := agg.SubConstant(value).DivLinear(chal.R)
-		if rem.Sign() != 0 {
-			return nil, fmt.Errorf("nonzero quotient remainder")
-		}
+		agg := sum.Polynomial()
+		// One synthetic-division pass returns both the witness and evaluation.
+		wpoly, value := agg.DivLinear(chal.R)
 		proof.Files[i] = FileProof{Value: value, W: benchcore.CommitG1(p.SRSG1, wpoly), Tags: openings}
 	}
 	return proof, nil
@@ -191,7 +194,8 @@ func (p *Protocol) Verify(stored *StoredBatch, chal Challenge, proof *Proof) boo
 	if stored == nil || proof == nil || len(proof.Files) != len(stored.Files) {
 		return false
 	}
-	sigmaGlobal := benchcore.G1Zero()
+	points := make([]*bn256.G1, 0, len(proof.Files)*len(chal.Indices))
+	scalars := make([]*big.Int, 0, cap(points))
 	valueGlobal := benchcore.Zero()
 	wGlobal := benchcore.G1Zero()
 	for i, fp := range proof.Files {
@@ -200,15 +204,17 @@ func (p *Protocol) Verify(stored *StoredBatch, chal Challenge, proof *Proof) boo
 		}
 		for pos, opening := range fp.Tags {
 			// Merkle authentication binds every challenged tag to its file root.
-			if opening.Index != chal.Indices[pos] || !benchcore.VerifyMerkle(xuLeaf(opening.Tag), stored.Roots[i], opening.Path) {
+			if opening.Tag == nil || opening.Index != chal.Indices[pos] || !benchcore.VerifyMerkle(xuLeaf(opening.Tag), stored.Roots[i], opening.Path) {
 				return false
 			}
-			sigmaGlobal = benchcore.G1Add(sigmaGlobal, benchcore.G1Mul(opening.Tag, chal.Coeffs[pos]))
+			points = append(points, opening.Tag)
+			scalars = append(scalars, chal.Coeffs[pos])
 		}
 		valueGlobal = benchcore.Add(valueGlobal, fp.Value)
 		wGlobal = benchcore.G1Add(wGlobal, fp.W)
 	}
 	// Check one aggregated KZG equation over all local proofs.
+	sigmaGlobal := benchcore.G1MultiExp(points, scalars)
 	left := benchcore.G1Add(sigmaGlobal, benchcore.G1Neg(benchcore.G1Base(valueGlobal)))
 	alphaMinusR := benchcore.G2Add(p.AlphaG2, benchcore.G2Neg(benchcore.G2Base(chal.R)))
 	return benchcore.PairingEqual(left, p.G2, wGlobal, alphaMinusR)

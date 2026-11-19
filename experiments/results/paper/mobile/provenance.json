@@ -1,0 +1,104 @@
+{
+  "measurement_platform": "physical iPhone 13",
+  "product_type": "iPhone14,5",
+  "iOS": "26.6.2 (23G90)",
+  "compiler": "Xcode 26.1 (17B55), Release Swift -O, Go 1.25.4 ios/arm64 c-archive",
+  "parameters": {
+    "B_encoded_bytes_per_file": 10001920,
+    "s": 80,
+    "c": 690,
+    "n": 3907,
+    "m": 10
+  },
+  "Xu_plan": {
+    "warmups": 3,
+    "measured_audits": 30,
+    "phone_Store_batches": 1,
+    "files_processed_sequentially": 10
+  },
+  "roles": {
+    "phone": [
+      "owner Setup",
+      "Store",
+      "Challenge",
+      "optional Verify"
+    ],
+    "cloud": [
+      "receive uploaded sectors and tags",
+      "ProofGen with public SRS"
+    ]
+  },
+  "setup": "Fresh cryptographic owner setup randomness for every scheme; baseline Store, ProofGen and Verify equations preserved.",
+  "energy_measurement": false,
+  "source_sha256": {
+    "go.mod": "4c12638303366ba1fd0b2f598d33cc04ff7356249f765833edd7ba504d860584",
+    "go.sum": "3bcc1ee96db0eba1a1ee88cc72fb489584ab974261faa4b75bff33f7b170986d",
+    "mobile/MultiAudit.xcodeproj/project.pbxproj": "991b68cf719c03167a331c73aff876ad0ed22aa6d365a752443459ce8a5987e5",
+    "mobile/Sources/MultiAuditApp.swift": "07f993e956b0b1a77341dc2a15dbbb52cf9d7a1d8f88f02ef43730d6039d676b",
+    "mobile/bridge/main.go": "67a07ffd7f223a54cb6b6f759bf540920cdafb16626a7174b55ab97e1afd3a88",
+    "mobile/build.sh": "9e712a54b389cc100801f56befd923e76443acb9d7c216ea041d71cf6374f0b1",
+    "mobile/core/core.go": "282c186fa96ff6fa852d44b12a8e1102f92dce7dab613b3c2959b80a3b56ec22",
+    "mobile/core/fixture.go": "fd816c5b7dacf736ac35904e65fa84619ffe917a556af0ed69053c08c3e4339c",
+    "mobile/core/owner.go": "1e154ba1455fcacc3a0db6d1247969ec2fc1974b47604d18c4b0b9b610347f18",
+    "mobile/core/wire.go": "712ee4228d47804dcba6e51282dd2f0bb87b01321e8908cf6bda8d7327ad75b8",
+    "mobile/server/main.go": "df1d5d3ef25a8347b7f36eb2cd0c9b770a9fc4b66f78801a27a153e466b3f0be",
+    "schemes/benchcore/arithmetic.go": "3f2c9bf844bbaa3d8e2615eefb40a1c29a0987bbeecec2dd7fc0f3aff27ec4d5",
+    "schemes/benchcore/benchcore.go": "938a9142a54415dc8764430b173631d2ac5eb7e5b03f6ba8f5a791be2fb5ccdb",
+    "schemes/benchcore/msm.go": "4bf31cbdd2967f1906789381ccc2f56f3dcac6b7b8d0849f655d42d483fb6dc6",
+    "schemes/benchcore/protocol_utils.go": "dd4274a07ab7cf915034e67eb55091b666c586f5bfdd4239104047b8b8b1ad52",
+    "schemes/benchcore/storage.go": "f3e768d1e627140fcc9a207f83d0495b30a4576705d34c299d840eaf9b8710c2",
+    "schemes/foldaudit/client_store.go": "f8e04e6c9bea3a08ae697a2a343ab6b5ff6e164ff5db4b8897b68b2a07a54795",
+    "schemes/foldaudit/encoding.go": "d7183daf4d23d19c8230e79af390f34ce6fc2b16facb9c1353447e6c782b77e6",
+    "schemes/foldaudit/files.go": "60e52be0eb145ce520f2ccf5b283db43a6da1c133cc11c8577fc3f01dc68f144",
+    "schemes/foldaudit/multiproof.go": "e06bfc10422d11ea34f2a1ef34729f219188a47ca2f09f81103d51c90e860f60",
+    "schemes/foldaudit/protocol.go": "7bd4fce113a8cb74096d40c816b4e5ae009986bf6c173af3572121c20061cc01",
+    "schemes/foldaudit/transcript.go": "223b507d7b275110b586c426143a7ce9082b5f71898ee96d8494acee6af71387",
+    "schemes/miaoscis2026/protocol.go": "3d2946667c800de985ef1f8822cedd8c1f286b9a58758c8a193de734a373b377",
+    "schemes/xutifs26/client_setup.go": "c84a896f812b20d374efd650a0fb9a8ce08c5ee048ca42cde01ffe0a2b6d7e3f",
+    "schemes/xutifs26/protocol.go": "b78fa74c1f4f3a9542ef97b87f869fef822e2ce7a5d5625ed221f567e5fb698f",
+    "schemes/yutc25/client_setup.go": "c2b30f1a4184ca9588692364c01430737dd1689f00f4cc78747fcb96c8eb8898",
+    "schemes/yutc25/protocol.go": "a7ae14d0aa6fe7265132dc448a94ac2a8185356e7e8bcdee84a7570d6102b091",
+    "schemes/zhangtpds23/protocol.go": "cb594210c154a3f70d9033684ab3f1df34c1d215a1ca1279723970bbd34d468e"
+  },
+  "binary_sha256": {
+    "MultiAudit": "0e0bce4af2eda127b0d8d8e48098337c3caaeb597af88e2ffece513707e75527",
+    "multiaudit-owner-server-next": "29eb3c48349ee18d1cab47d685a19deb3dfafdbc9d93b25d5507568267c4b17d"
+  },
+  "completed_protocols": [
+    "MultiAudit",
+    "Xu",
+    "Yu"
+  ],
+  "completed_formal_audits": 90,
+  "completed_owner_store_files": 30,
+  "warmup_audits_retained": 9,
+  "configuration": {
+    "m": 10,
+    "B_nominal_MB": 10,
+    "encoded_bytes_per_file": 10001920,
+    "s": 80,
+    "c": 690,
+    "n": 3907
+  },
+  "measurement_files": {
+    "multiaudit_iphone13.json": "c0796ade42ab1c9bdf2f2b5b95ca081de9a265d45b43173ddab1de77b9539dcb",
+    "xu_iphone13.json": "7f714a18ab11f416a572df8bf8feb71fcb27f8991d55a12752760840b09b92dc",
+    "yu_iphone13.json": "d13e850a7adb4bd2ba3db601ba2736c075afa9c1824318fc43bb7c7735ff7765",
+    "multiaudit_registry.json": "d5a957dc25eae3e8caf58a77f73855efe32bc380a9519fe8efd68a1b99ec4f4c",
+    "xu_registry.json": "7dbf1b23499b8776ac301637f3ae44a7ea306c41c7847d9db22e7a6ef816461d",
+    "yu_registry.json": "69af859935a4e61cf19f157a9f34f5e753d0b8d865cb37936622d7e11180e1fd",
+    "comparison.csv": "5b0b28211c6349abb5693101487b4239ca30481787a446f1c41ff965310f8665",
+    "comparison.json": "f83f52cb50e06e5cdeb0cbe26a6542510a4b2fb32f227c73ec78d14cfaf79f6f"
+  },
+  "incomplete_runs": [
+    {
+      "path": "diagnostics/yu_incomplete_run.json",
+      "status": "incomplete Store; zero exported audit measurements; excluded from comparison; repeated with unchanged app/server binaries"
+    }
+  ],
+  "statistics": {
+    "Store": "one complete ten-file native preprocessing pass per scheme",
+    "Verify": "median and inclusive IQR of 30 fresh audits, after 3 warmups",
+    "sample_removal": false
+  }
+}

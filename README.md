@@ -1,176 +1,84 @@
-# FoldAudit
+# MultiAudit
 
-This repository contains the FoldAudit protocol implementation, reproduced
-comparison protocols, protocol-execution benchmarks, attack simulations, plotting
-scripts, and the paper source.
+MultiAudit authenticates sampled tags with per-file compact Merkle multiproofs and
+opens the aggregated data with two batched KZG opening witnesses (`CQ`, `CW`). A batch uses one
+data SRS and distinct file-specific evaluation points. The transcript binds the
+SRS, ordered file metadata, challenge, tags, and masked values; `z` is derived only
+after `CQ` is fixed. Verification uses authenticated metadata independently of the
+stored data. File addition and audit-set removal preserve surviving file roots.
 
-The testing workflow is organized around one principle: paper figures should be
-derived from executable protocol paths whenever possible, not from manually
-edited data. Use quick tests for code sanity, the paper profile for Section VI
-data, and the attack runners for the security-simulation figures.
+The implementations share BN256 (go-ethereum v1.17.2), Pippenger MSM, finite-field
+arithmetic, and owned scalar storage. Stored values are isolated from caller
+buffers; polynomial views of owned rows are read-only. Proof encodings, challenge
+domains, and verification conditions follow the paper.
 
-## Repository Layout
+## Paper and measurements
 
-- `schemes/`
-  - `foldaudit/`: FoldAudit protocol implementation.
-  - `yutc25/`, `zhangtpds23/`, `miaoscis2026/`, `xutifs26/`: reproduced related protocols.
-  - `benchcore/`: shared field, group, polynomial, Merkle, dataset, and helper code.
-  - `relatedbench/`: cross-protocol reproduction tests.
-- `experiments/`
-  - `protocolbench/main.go`: main Go runner for protocol-execution overhead data.
-  - `cancellationattack/main.go`: Go runner for folded-cancellation attack simulations.
-  - `leakageattack/main.go`: Go runner for repeated-audit leakage timing.
-  - `evaluate_vi_settings.py`: plots Section VI figures from protocolbench CSV data.
-  - `plot_attack_simulations.py`: plots attack/sampling figures from attack CSV data.
-  - `render_vi_aggregate_figures.py`: communication/aggregate helper plots.
-  - `out/`: generated CSV and PDF results used for paper figures.
-- `paper/`
-  - `FoldAudit.tex`: paper source.
-  - `figures/`: paper-local copies of selected generated PDF figures.
-  - `refs/`: reference material.
+- `paper/MultiAudit.tex`: self-contained manuscript, with all figures inline.
+- `output/pdf/MultiAudit.pdf`: compiled manuscript.
+- `mobile/MultiAudit.xcodeproj`: iPhone client (owner Store and optional Verify).
+- `experiments/results/paper/mobile/comparison.csv`: physical iPhone 13 Store/Verify comparison for ten nominal 10 MB files.
+- `experiments/results/paper/runtime.csv`: Store/ProofGen/Verify statistics.
+- `runtime.csv.samples.csv`: every timed observation.
+- `runtime.csv.meta.json`: parameters, timing policy, backend and binary identifiers.
+- `response.csv`: 30 encoded MultiAudit responses at `m=40`.
+- `onchain/gas.csv` and `onchain/metadata.json`: complete single-file EVM
+  verification receipts, calldata sizes, and malformed-input checks for Xu, Yu,
+  and MultiAudit at `m=1`, `B=10 MB`, `s=80`, `c=690` (five fresh audits each).
 
-## Requirements
+The experiment fixes decimal `B=10 MB` per file, `s=80`, `c=690`, and varies
+`m={10,20,30,40}`. Whole chunks give `n=3907` and 10,001,920 encoded bytes per file.
+The five schemes use 20 complete fixtures and 600 measured fresh audits. Online
+calls use one worker, at least three warmups and five seconds of warmup, and 30
+measurements per fixture. Store is measured once; it uses sequential file paths
+except for Miao's four-file worker interface. GC runs outside online timers; any
+timed collection remains included. The figure reports medians and quartiles.
 
-- Go 1.24 or newer.
-- Python 3 with `matplotlib`, `numpy`, `pandas`, and `seaborn`.
-- A LaTeX distribution with `pdflatex`.
+Yu is measured as independent file audits. Miao uses `n*s` native scalar blocks;
+its keyword query matches all files. The native sampling volumes differ from the
+multi-sector schemes, as stated in the paper. Communication formulas and encoded
+response measurements use their declared byte conventions.
 
-Install Python packages in your preferred environment:
+## Check and publish
 
-```bash
-python3 -m pip install matplotlib numpy pandas seaborn
+```sh
+go test ./...
+go vet ./...
+python3 experiments/validate_results.py
+python3 experiments/onchain/report.py
+python3 experiments/publish_paper.py
+latexmk -pdf -jobname=MultiAudit -interaction=nonstopmode -halt-on-error -outdir=output/pdf paper/MultiAudit.tex
 ```
 
-If Go cannot write its default build cache in a restricted environment, set a
-local cache for the command:
+The publisher validates all raw statistics and embeds the three runtime panels (Store, ProofGen, Verify) and the audit-response
+payload plot, all against file count. The communication plot separately compares
+the Merkle-authenticated constructions on a linear MB axis.
 
-```bash
-GOCACHE=/tmp/foldaudit-gocache go test ./...
+## Rerun measurements
+
+On Apple silicon, explicitly build native binaries if the installed Go compiler
+uses amd64. Full fixtures are generated for every protocol.
+
+```sh
+GOARCH=arm64 go build -o /private/tmp/multiaudit-bench ./experiments/protocolbench
+/private/tmp/multiaudit-bench -out experiments/results/paper/runtime.csv
+GOARCH=arm64 go test -c -o /private/tmp/multiaudit-response.test ./schemes/multiaudit
+MULTIAUDIT_RESPONSE_CSV=experiments/results/paper/response.csv /private/tmp/multiaudit-response.test -test.run '^TestResponseMeasurement$' -test.timeout 20m -test.v
 ```
 
-## Test Strategy
+Recorded observations retain their original labels and fingerprints. The publisher
+normalizes labels using `source_rename.json` and checks the recorded source snapshots
+in `measurement_sources.zip`; the archive is separate from the current implementation.
 
-There are three levels of tests.
+Synthetic inputs and measurement seeds support reproducibility. The security
+scope is the authenticated-opening statement specified in the paper.
 
-1. Code sanity tests
-
-   These compile all packages and run protocol-level unit/reproduction tests.
-
-   ```bash
-   go test ./...
-   ```
-
-2. Quick executable pipeline test
-
-   This runs the same benchmark path as the paper with small parameters. It is
-   the fastest way to check that Store, Challenge, ProofGen, Verify, CSV writing,
-   and plotting still work end to end.
-
-   ```bash
-   go run ./experiments/protocolbench \
-     -profile quick \
-     -repeats 1 \
-     -out /tmp/foldaudit_vi_overhead_quick.csv
-
-   python3 experiments/evaluate_vi_settings.py \
-     --csv /tmp/foldaudit_vi_overhead_quick.csv
-   ```
-
-3. Paper-setting experiments
-
-   This is the source of the current Section VI runtime figures. It directly
-   executes each reproduced protocol and records phase timings; it does not
-   extrapolate from primitive operation counts.
-
-   ```bash
-   go run ./experiments/protocolbench \
-     -profile paper \
-     -repeats 3 \
-     -out experiments/out/vi_evaluation/vi_overhead_all.csv
-
-   python3 experiments/evaluate_vi_settings.py \
-     --csv experiments/out/vi_evaluation/vi_overhead_all.csv
-   ```
-
-## Section VI Settings
-
-The paper profile uses:
-
-- challenge size `c = 690`
-- batch size `m in {5, 10, 15, 20, 25, 30}`
-- file size `B in {10, 20, 30, 40, 50, 60, 70, 80, 90, 100} MB`
-- sectors per chunk `s in {20, 40, 60, 80, 100}`
-- baseline setting `m = 5`, `B = 10 MB`, `s = 20`
-- chunks per file `n = max(c, ceil(B/(32s)))`
-- default repetitions per workload point: `3`
-
-The Go runner records `Store`, `Challenge`, `ProofGen`, `Verify`, and derived
-`Audit = Challenge + ProofGen + Verify` rows. Each CSV row includes an `ok`
-field; plotting aborts if any protocol execution failed.
-
-## Attack Simulations
-
-Generate attack timing CSV files:
-
-```bash
-go run ./experiments/leakageattack \
-  -trials 20 \
-  -m 4 \
-  -n 64 \
-  -s 8 \
-  -c 8 \
-  -out experiments/out/attack_simulation/data_leakage_audit_cost.csv
-
-go run ./experiments/cancellationattack \
-  -trials 20 \
-  -m 4 \
-  -n 64 \
-  -s 8 \
-  -c 8 \
-  -out experiments/out/attack_simulation/cancellation_attack_cost.csv
-```
-
-Then draw the attack and sampling figures:
-
-```bash
-python3 experiments/plot_attack_simulations.py
-```
-
-The attack plotting script currently writes more figures than the paper may
-include. Keep all `experiments/out/attack_simulation/` outputs as reproducible
-results; copy only paper-used figures into `paper/figures/attack_simulation/`.
-
-## Plot Outputs
-
-The VI plotting script writes:
-
-- `experiments/out/vi_evaluation/baseline.csv`
-- `experiments/out/vi_evaluation/vary_m.csv`
-- `experiments/out/vi_evaluation/vary_B.csv`
-- `experiments/out/vi_evaluation/vary_s.csv`
-- `experiments/out/vi_evaluation/average_overhead_summary.csv`
-- `experiments/out/vi_evaluation/audit_vs_m.pdf`
-- `experiments/out/vi_evaluation/store_vs_file_size.pdf`
-- `experiments/out/vi_evaluation/proofgen_vs_s.pdf`
-- `experiments/out/vi_evaluation/verify_vs_s.pdf`
-- `experiments/out/vi_evaluation/baseline_phase_overhead.pdf`
-- `experiments/out/vi_evaluation/mean_audit_overhead.pdf`
-
-The paper-local figure directories are intentionally separate from
-`experiments/out/`. After regenerating results, refresh the paper copies with
-the figures referenced by `paper/FoldAudit.tex`.
-
-Example:
-
-```bash
-cp experiments/out/attack_simulation/sampling_detection_probability.pdf paper/figures/attack_simulation/
-cp experiments/out/attack_simulation/data_leakage_attack_cost.pdf paper/figures/attack_simulation/
-cp experiments/out/attack_simulation/cancellation_attack_cost.pdf paper/figures/attack_simulation/
-
-cp experiments/out/vi_evaluation/store_vs_file_size.pdf paper/figures/vi_evaluation/
-cp experiments/out/vi_evaluation/proofgen_vs_s.pdf paper/figures/vi_evaluation/
-cp experiments/out/vi_evaluation/verify_vs_s.pdf paper/figures/vi_evaluation/
-cp experiments/out/vi_evaluation/audit_vs_m.pdf paper/figures/vi_evaluation/
-cp experiments/out/vi_evaluation/baseline_phase_overhead.pdf paper/figures/vi_evaluation/
-cp experiments/out/vi_evaluation/proof_communication_vs_m.pdf paper/figures/vi_evaluation/
-```
+The single-file chain experiment uses Solidity 0.8.25 and a local Ganache 7.9.2
+EVM with Shanghai pricing and a 100 Mgas block limit. Total gas includes actual
+calldata and complete verification; deployment and prior challenge registration
+are excluded. The caller is different from the owner. SHA-256 framing and
+Fiat-Shamir domains match the native implementations. Group helpers and
+equivalent arithmetic rearrangements are applied consistently. Rerun with
+`sh experiments/onchain/run.sh` (requires `solc`, Go, Node, and globally installed
+`ganache` and `web3`). Newer-fork limits and calldata-floor repricing are identified
+separately from the measured environment.

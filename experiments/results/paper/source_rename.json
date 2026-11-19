@@ -1,0 +1,181 @@
+{
+  "schema": 1,
+  "description": "Archived sources for recorded experiments; current source paths and fingerprints track the case-preserving project rename. Recorded measurements, signatures, registries and transaction hashes remain unchanged.",
+  "replacements": [
+    [
+      "foldaudit",
+      "multiaudit"
+    ],
+    [
+      "FoldAudit",
+      "MultiAudit"
+    ],
+    [
+      "FOLDAUDIT",
+      "MULTIAUDIT"
+    ],
+    [
+      "FA01",
+      "MA01"
+    ]
+  ],
+  "source_archive": "measurement_sources.zip",
+  "source_archive_sha256": "7669d288f97b84bae41f89cd09dc12a2378898cb78ebec9bc767fa85d7965c4d",
+  "sources": {
+    "experiments/onchain/AuditVerifier.sol": {
+      "original_sha256": "d0fe907d79491c7b0f7f859fe9dd668d12c36810db107bf8690201fdcc1ebb34",
+      "current_path": "experiments/onchain/AuditVerifier.sol",
+      "current_sha256": "8255ae75a5a92770477a5acfdfe2893c1b81a6b928c9ee8dff3d862605d4a4fd"
+    },
+    "experiments/onchain/fixtures.go": {
+      "original_sha256": "d0ca4f3507c936c63136372643d7f24f9d023d2eb557670468b50fb17dde9149",
+      "current_path": "experiments/onchain/fixtures.go",
+      "current_sha256": "b3a84c107636cbedc488415e72425bc0c70857bfd181f285d17eb54f021eed94"
+    },
+    "experiments/onchain/run.cjs": {
+      "original_sha256": "666b936b1053475506faba17d9a8ae04492297d8683119dfdad6cba3250c5af2",
+      "current_path": "experiments/onchain/run.cjs",
+      "current_sha256": "9a4d4c7bc425ea31aad233fe4afc31a35ed55f734a3970d3eeb68803eab8d8da"
+    },
+    "go.mod": {
+      "original_sha256": "4c12638303366ba1fd0b2f598d33cc04ff7356249f765833edd7ba504d860584",
+      "current_path": "go.mod",
+      "current_sha256": "3f3181ed23afb5b04942cb760fff4ee4b54249cd4d61f692d55653c97d0ad356"
+    },
+    "go.sum": {
+      "original_sha256": "3bcc1ee96db0eba1a1ee88cc72fb489584ab974261faa4b75bff33f7b170986d",
+      "current_path": "go.sum",
+      "current_sha256": "3bcc1ee96db0eba1a1ee88cc72fb489584ab974261faa4b75bff33f7b170986d"
+    },
+    "mobile/MultiAudit.xcodeproj/project.pbxproj": {
+      "original_sha256": "991b68cf719c03167a331c73aff876ad0ed22aa6d365a752443459ce8a5987e5",
+      "current_path": "mobile/MultiAudit.xcodeproj/project.pbxproj",
+      "current_sha256": "991b68cf719c03167a331c73aff876ad0ed22aa6d365a752443459ce8a5987e5"
+    },
+    "mobile/Sources/MultiAuditApp.swift": {
+      "original_sha256": "07f993e956b0b1a77341dc2a15dbbb52cf9d7a1d8f88f02ef43730d6039d676b",
+      "current_path": "mobile/Sources/MultiAuditApp.swift",
+      "current_sha256": "07f993e956b0b1a77341dc2a15dbbb52cf9d7a1d8f88f02ef43730d6039d676b"
+    },
+    "mobile/bridge/main.go": {
+      "original_sha256": "67a07ffd7f223a54cb6b6f759bf540920cdafb16626a7174b55ab97e1afd3a88",
+      "current_path": "mobile/bridge/main.go",
+      "current_sha256": "6c793030bd1b78defeaa9c899fa3385e8a48835feb4309e4c3024d43cb74ea4d"
+    },
+    "mobile/build.sh": {
+      "original_sha256": "9e712a54b389cc100801f56befd923e76443acb9d7c216ea041d71cf6374f0b1",
+      "current_path": "mobile/build.sh",
+      "current_sha256": "9e712a54b389cc100801f56befd923e76443acb9d7c216ea041d71cf6374f0b1"
+    },
+    "mobile/core/core.go": {
+      "original_sha256": "282c186fa96ff6fa852d44b12a8e1102f92dce7dab613b3c2959b80a3b56ec22",
+      "current_path": "mobile/core/core.go",
+      "current_sha256": "075091f9e9d3f7a643e61308a5c031e665c47f0c642d7265b25099339b7de12b"
+    },
+    "mobile/core/fixture.go": {
+      "original_sha256": "fd816c5b7dacf736ac35904e65fa84619ffe917a556af0ed69053c08c3e4339c",
+      "current_path": "mobile/core/fixture.go",
+      "current_sha256": "1ce1d058babf59435dc30c4eb1222958d61faceeb773699f0c098c15fd5d10c4"
+    },
+    "mobile/core/owner.go": {
+      "original_sha256": "1e154ba1455fcacc3a0db6d1247969ec2fc1974b47604d18c4b0b9b610347f18",
+      "current_path": "mobile/core/owner.go",
+      "current_sha256": "865b83921e058e09f4ce1da4608843bc951bc12d7707f871981a57012bf288b0"
+    },
+    "mobile/core/wire.go": {
+      "original_sha256": "712ee4228d47804dcba6e51282dd2f0bb87b01321e8908cf6bda8d7327ad75b8",
+      "current_path": "mobile/core/wire.go",
+      "current_sha256": "dbe4b7335ca423dfcfbf3928a4fb172217f5f3a1d3e8165ff349ad7c601c6015"
+    },
+    "mobile/server/main.go": {
+      "original_sha256": "df1d5d3ef25a8347b7f36eb2cd0c9b770a9fc4b66f78801a27a153e466b3f0be",
+      "current_path": "mobile/server/main.go",
+      "current_sha256": "c896affc3da039478f7953f7a34efce4bb6486135d80b5bf78cb4fd5ff8d2df6"
+    },
+    "schemes/benchcore/arithmetic.go": {
+      "original_sha256": "3f2c9bf844bbaa3d8e2615eefb40a1c29a0987bbeecec2dd7fc0f3aff27ec4d5",
+      "current_path": "schemes/benchcore/arithmetic.go",
+      "current_sha256": "3f2c9bf844bbaa3d8e2615eefb40a1c29a0987bbeecec2dd7fc0f3aff27ec4d5"
+    },
+    "schemes/benchcore/benchcore.go": {
+      "original_sha256": "938a9142a54415dc8764430b173631d2ac5eb7e5b03f6ba8f5a791be2fb5ccdb",
+      "current_path": "schemes/benchcore/benchcore.go",
+      "current_sha256": "938a9142a54415dc8764430b173631d2ac5eb7e5b03f6ba8f5a791be2fb5ccdb"
+    },
+    "schemes/benchcore/msm.go": {
+      "original_sha256": "4bf31cbdd2967f1906789381ccc2f56f3dcac6b7b8d0849f655d42d483fb6dc6",
+      "current_path": "schemes/benchcore/msm.go",
+      "current_sha256": "4bf31cbdd2967f1906789381ccc2f56f3dcac6b7b8d0849f655d42d483fb6dc6"
+    },
+    "schemes/benchcore/protocol_utils.go": {
+      "original_sha256": "dd4274a07ab7cf915034e67eb55091b666c586f5bfdd4239104047b8b8b1ad52",
+      "current_path": "schemes/benchcore/protocol_utils.go",
+      "current_sha256": "8b2525c8be4b9bb5809c602eec65954d0fccf51df0845c58e06cd707a83e9be4"
+    },
+    "schemes/benchcore/storage.go": {
+      "original_sha256": "f3e768d1e627140fcc9a207f83d0495b30a4576705d34c299d840eaf9b8710c2",
+      "current_path": "schemes/benchcore/storage.go",
+      "current_sha256": "f3e768d1e627140fcc9a207f83d0495b30a4576705d34c299d840eaf9b8710c2"
+    },
+    "schemes/foldaudit/client_store.go": {
+      "original_sha256": "f8e04e6c9bea3a08ae697a2a343ab6b5ff6e164ff5db4b8897b68b2a07a54795",
+      "current_path": "schemes/multiaudit/client_store.go",
+      "current_sha256": "87a836942489286013ce4db7013f8853f453b4d818cb987fc14d69f2f9c54b37"
+    },
+    "schemes/foldaudit/encoding.go": {
+      "original_sha256": "d7183daf4d23d19c8230e79af390f34ce6fc2b16facb9c1353447e6c782b77e6",
+      "current_path": "schemes/multiaudit/encoding.go",
+      "current_sha256": "5cd2fd65ca1d50ccafc5158b5b36fd0501d5146d49635ce47f107266ca2a54d9"
+    },
+    "schemes/foldaudit/files.go": {
+      "original_sha256": "60e52be0eb145ce520f2ccf5b283db43a6da1c133cc11c8577fc3f01dc68f144",
+      "current_path": "schemes/multiaudit/files.go",
+      "current_sha256": "9c949b40c538af3def700513f0a8341a71fc134fbc767ec31eb60e13edb072a5"
+    },
+    "schemes/foldaudit/multiproof.go": {
+      "original_sha256": "e06bfc10422d11ea34f2a1ef34729f219188a47ca2f09f81103d51c90e860f60",
+      "current_path": "schemes/multiaudit/multiproof.go",
+      "current_sha256": "99bd59061758aa4f6fd72bfd94b9097051c9c8e52ad72257417af1acf63d48a6"
+    },
+    "schemes/foldaudit/protocol.go": {
+      "original_sha256": "7bd4fce113a8cb74096d40c816b4e5ae009986bf6c173af3572121c20061cc01",
+      "current_path": "schemes/multiaudit/protocol.go",
+      "current_sha256": "0af9fbce771f90d17420cc4d2600d2283cc7aac9de82a646fe7f37bc62bd8a11"
+    },
+    "schemes/foldaudit/transcript.go": {
+      "original_sha256": "223b507d7b275110b586c426143a7ce9082b5f71898ee96d8494acee6af71387",
+      "current_path": "schemes/multiaudit/transcript.go",
+      "current_sha256": "fc42610f89db5388ac3710ec870b1b3f4f7bfceec19be7ceda006d8634384b7c"
+    },
+    "schemes/miaoscis2026/protocol.go": {
+      "original_sha256": "3d2946667c800de985ef1f8822cedd8c1f286b9a58758c8a193de734a373b377",
+      "current_path": "schemes/miaoscis2026/protocol.go",
+      "current_sha256": "1a826fb8bf57294439126b99f817ab14e8065756058f76a06672b820f1b6db28"
+    },
+    "schemes/xutifs26/client_setup.go": {
+      "original_sha256": "c84a896f812b20d374efd650a0fb9a8ce08c5ee048ca42cde01ffe0a2b6d7e3f",
+      "current_path": "schemes/xutifs26/client_setup.go",
+      "current_sha256": "f9f140ec75df3c75b334569e7f993307a21c45f34307f3e0637500fa38b14b23"
+    },
+    "schemes/xutifs26/protocol.go": {
+      "original_sha256": "b78fa74c1f4f3a9542ef97b87f869fef822e2ce7a5d5625ed221f567e5fb698f",
+      "current_path": "schemes/xutifs26/protocol.go",
+      "current_sha256": "280d046b53dff2edebda4e0e5759354558d52834d04b17cff5e5ccff0b6f0ddc"
+    },
+    "schemes/yutc25/client_setup.go": {
+      "original_sha256": "c2b30f1a4184ca9588692364c01430737dd1689f00f4cc78747fcb96c8eb8898",
+      "current_path": "schemes/yutc25/client_setup.go",
+      "current_sha256": "c0d5b102d394c4a4e2bfec29879f5b759cc132be690bc1e7a75de87931166a30"
+    },
+    "schemes/yutc25/protocol.go": {
+      "original_sha256": "a7ae14d0aa6fe7265132dc448a94ac2a8185356e7e8bcdee84a7570d6102b091",
+      "current_path": "schemes/yutc25/protocol.go",
+      "current_sha256": "f12cedc83b663b9c4a762314f8a4a578ccd822ba6c5c9c7658aa36bf2846d235"
+    },
+    "schemes/zhangtpds23/protocol.go": {
+      "original_sha256": "cb594210c154a3f70d9033684ab3f1df34c1d215a1ca1279723970bbd34d468e",
+      "current_path": "schemes/zhangtpds23/protocol.go",
+      "current_sha256": "fdbfd5cf07c87f5f7080fd632f00a900bba0798178f7de01b3bd7311bbde8744"
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "measurement_source": "local_evm_transaction_receipts",
+  "m": 1,
+  "B_MB": 10,
+  "n": 3907,
+  "s": 80,
+  "c": 690,
+  "encoded_file_bytes": 10001920,
+  "audits_per_scheme": 5,
+  "evm": "Ganache 7.9.2",
+  "hardfork": "shanghai",
+  "solidity": "solc, the solidity compiler commandline interface\nVersion: 0.8.25+commit.b61c2a91.Darwin.appleclang",
+  "compiler_options": [
+    "--optimize",
+    "--via-ir",
+    "--evm-version",
+    "shanghai"
+  ],
+  "execution_gas": "receipt minus exact EIP-2028 intrinsic gas",
+  "eip7623_projection": "reprice exact calldata and measured Shanghai execution; not a Prague/Fusaka measurement",
+  "block_gas_limit": 100000000,
+  "registration_and_deployment": "excluded; roots/SRS bound at deployment, challenge digest owner-registered before each audit",
+  "authentication": "native separate paths for Xu/Yu; native CMM and full Fiat-Shamir/Schnorr checks for FoldAudit",
+  "algebraic_rearrangements": "Xu shifts G2 scalar multiplication to G1; Yu combines (X-z)q+y coefficients; FoldAudit expands data MSM",
+  "native_fixtures_verified": true,
+  "public_verifier_account": true,
+  "negative_checks": [
+    {
+      "scheme": "FoldAudit",
+      "case": "changed challenge",
+      "rejected": true
+    },
+    {
+      "scheme": "FoldAudit",
+      "case": "changed authentication hash",
+      "rejected": true
+    },
+    {
+      "scheme": "FoldAudit",
+      "case": "changed evaluation",
+      "rejected": true
+    },
+    {
+      "scheme": "FoldAudit",
+      "case": "truncated proof",
+      "rejected": true
+    },
+    {
+      "scheme": "FoldAudit",
+      "case": "changed tag",
+      "rejected": true
+    },
+    {
+      "scheme": "FoldAudit",
+      "case": "changed first witness",
+      "rejected": true
+    },
+    {
+      "scheme": "FoldAudit",
+      "case": "changed second witness",
+      "rejected": true
+    },
+    {
+      "scheme": "FoldAudit",
+      "case": "changed Schnorr response",
+      "rejected": true
+    },
+    {
+      "scheme": "FoldAudit",
+      "case": "unauthorized challenge update",
+      "rejected": true
+    },
+    {
+      "scheme": "YuTC25",
+      "case": "changed challenge",
+      "rejected": true
+    },
+    {
+      "scheme": "YuTC25",
+      "case": "changed authentication hash",
+      "rejected": true
+    },
+    {
+      "scheme": "YuTC25",
+      "case": "changed evaluation",
+      "rejected": true
+    },
+    {
+      "scheme": "YuTC25",
+      "case": "truncated proof",
+      "rejected": true
+    },
+    {
+      "scheme": "YuTC25",
+      "case": "changed tag",
+      "rejected": true
+    },
+    {
+      "scheme": "YuTC25",
+      "case": "unauthorized challenge update",
+      "rejected": true
+    },
+    {
+      "scheme": "XuTIFS26",
+      "case": "changed challenge",
+      "rejected": true
+    },
+    {
+      "scheme": "XuTIFS26",
+      "case": "changed authentication hash",
+      "rejected": true
+    },
+    {
+      "scheme": "XuTIFS26",
+      "case": "changed evaluation",
+      "rejected": true
+    },
+    {
+      "scheme": "XuTIFS26",
+      "case": "truncated proof",
+      "rejected": true
+    },
+    {
+      "scheme": "XuTIFS26",
+      "case": "changed tag",
+      "rejected": true
+    },
+    {
+      "scheme": "XuTIFS26",
+      "case": "unauthorized challenge update",
+      "rejected": true
+    }
+  ],
+  "bytecode_sha256": "eeb801f046f75d33301d228535320d64230452f7df90c7f1b243bfb593fa8130",
+  "source_sha256": {
+    "experiments/onchain/AuditVerifier.sol": "d0fe907d79491c7b0f7f859fe9dd668d12c36810db107bf8690201fdcc1ebb34",
+    "experiments/onchain/fixtures.go": "d0ca4f3507c936c63136372643d7f24f9d023d2eb557670468b50fb17dde9149",
+    "experiments/onchain/run.cjs": "666b936b1053475506faba17d9a8ae04492297d8683119dfdad6cba3250c5af2",
+    "schemes/foldaudit/protocol.go": "7bd4fce113a8cb74096d40c816b4e5ae009986bf6c173af3572121c20061cc01",
+    "schemes/foldaudit/transcript.go": "223b507d7b275110b586c426143a7ce9082b5f71898ee96d8494acee6af71387",
+    "schemes/xutifs26/protocol.go": "b78fa74c1f4f3a9542ef97b87f869fef822e2ce7a5d5625ed221f567e5fb698f",
+    "schemes/yutc25/protocol.go": "a7ae14d0aa6fe7265132dc448a94ac2a8185356e7e8bcdee84a7570d6102b091"
+  }
+}

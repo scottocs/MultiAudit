@@ -1,670 +1,322 @@
+// protocolbench measures complete native multi-file protocol calls in ms.
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"math"
 	"math/big"
+	"math/rand"
+	"multiaudit/schemes/benchcore"
+	"multiaudit/schemes/miaoscis2026"
+	"multiaudit/schemes/multiaudit"
+	"multiaudit/schemes/xutifs26"
+	"multiaudit/schemes/yutc25"
+	"multiaudit/schemes/zhangtpds23"
 	"os"
+	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"time"
-
-	"foldaudit/schemes/benchcore"
-	"foldaudit/schemes/foldaudit"
-	"foldaudit/schemes/miaoscis2026"
-	"foldaudit/schemes/xutifs26"
-	"foldaudit/schemes/yutc25"
-	"foldaudit/schemes/zhangtpds23"
 )
 
 const (
 	challengeSize = 690
-	baseM         = 4
 	baseBMB       = 10
-	baseS         = 20
+	baseS         = 80
 )
 
-type params struct {
-	M   int
-	BMB int
-	S   int
-	C   int
+type params struct{ M, BMB, S, C int }
+
+func (p params) N() int     { return max(p.C, (p.BMB*1_000_000+32*p.S-1)/(32*p.S)) }
+func (p params) Bytes() int { return p.N() * p.S * 32 }
+func (p params) native(scheme string) (int, int) {
+	if scheme == "MiaoSCIS2026" {
+		return p.N() * p.S, 1
+	}
+	return p.N(), p.S
 }
 
-func (p params) N() int {
-	return max(p.C, int(math.Ceil(float64(p.BMB*1_000_000)/float64(32*p.S))))
+type fixture struct {
+	name                     string
+	challenge, prove, verify func() bool
+	prepMS                   float64
+}
+type scheme struct {
+	name    string
+	prepare func(params) fixture
 }
 
-type row struct {
-	Scenario string
-	Variable string
-	Value    int
-	Scheme   string
-	Phase    string
-	Params   params
-	Seconds  float64
-	StdDev   float64
-	Repeats  int
-	OK       bool
-}
+var preparationWorkers = 4
 
-type timedResult struct {
-	duration time.Duration
-	ok       bool
-}
+var schemes = []scheme{{"ZhangTPDS23", prepareZhang}, {"MiaoSCIS2026", prepareMiao}, {"XuTIFS26", prepareXu}, {"MultiAudit", prepareMultiAudit}, {"YuTC25", prepareYu}}
 
-type phaseSamples struct {
-	seconds []float64
-	ok      bool
+type samples map[string][]float64
+
+func paperGrid() []params {
+	points := make([]params, 0, 4)
+	for _, m := range []int{10, 20, 30, 40} {
+		points = append(points, params{m, baseBMB, baseS, challengeSize})
+	}
+	return points
 }
 
 func main() {
-	outPath := flag.String("out", "experiments/out/vi_evaluation/vi_overhead_all.csv", "output CSV path")
-	profile := flag.String("profile", "paper", "benchmark profile: paper or quick")
-	phases := flag.String("phases", "all", "benchmark phases: all, online, or store")
-	repeats := flag.Int("repeats", 10, "number of protocol executions per workload point")
+	out := flag.String("out", "experiments/results/paper/runtime.csv", "measurements CSV")
+	repeats := flag.Int("repeats", 30, "fresh audits per fixture")
+	warmups := flag.Int("warmups", 3, "minimum warmup audits")
 	flag.Parse()
-	if *repeats < 1 {
-		fatal(fmt.Errorf("repeats must be at least 1"))
+	if *repeats < 1 || *warmups < 0 {
+		fatal(fmt.Errorf("invalid repetitions"))
 	}
-	if *phases != "all" && *phases != "online" && *phases != "store" {
-		fatal(fmt.Errorf("unknown phases %q", *phases))
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	f, w := createCSV(*out)
+	defer f.Close()
+	must(w.Write([]string{"scenario", "variable", "value", "scheme", "phase", "m", "B_MB", "s", "c", "n", "milliseconds", "milliseconds_stddev", "p25_ms", "p75_ms", "repeats", "ok", "native_blocks", "native_sectors", "encoded_bytes_per_file", "challenged_bytes_per_file", "measurement_source"}))
+	w.Flush()
+	rf, rw := createCSV(*out + ".samples.csv")
+	defer rf.Close()
+	must(rw.Write([]string{"m", "B_MB", "s", "c", "scheme", "phase", "repeat", "order_position", "milliseconds", "ok", "measurement_source", "gc_cycles_during_phase"}))
+	rw.Flush()
+	names := make([]string, len(schemes))
+	for i, candidate := range schemes {
+		names[i] = candidate.name
 	}
-
-	file, writer, err := createCSV(*outPath)
-	if err != nil {
-		fatal(err)
+	meta := map[string]any{
+		"profile": "file-count", "B_MB": baseBMB, "s": baseS, "c": challengeSize,
+		"n": paperGrid()[0].N(), "m_scan": []int{10, 20, 30, 40}, "schemes": names,
+		"binary_sha256": binaryFingerprint(), "multiaudit_protocol": multiaudit.ProtocolID,
+		"storage_backend": benchcore.StorageID, "arithmetic_backend": benchcore.ArithmeticID,
+		"go_version": runtime.Version(), "goarch": runtime.GOARCH,
+		"goos": runtime.GOOS, "online_repeats": *repeats, "warmup_rounds": *warmups,
+		"minimum_warmup_seconds": 5, "online_gomaxprocs": 1, "locked_os_thread": true,
+		"fixture_preparation_gomaxprocs": 4, "miao_preparation_workers": preparationWorkers,
+		"order_seed": 42, "time_unit": "ms", "workload_heap_bytes": map[string]uint64{},
+		"gc_policy": "four workers outside timers; one worker in online calls",
 	}
-	defer file.Close()
-	if err := writeCSVHeader(writer); err != nil {
-		fatal(err)
-	}
-	if err := runProfile(*profile, *repeats, *phases, func(rows []row) error {
-		if err := writeCSVRows(writer, rows); err != nil {
-			return err
+	saveJSON(*out+".meta.json", meta)
+	rng := rand.New(rand.NewSource(42))
+	for _, point := range paperGrid() {
+		values := map[string]samples{}
+		for pos, index := range rng.Perm(len(schemes)) {
+			candidate := schemes[index]
+			values[candidate.name] = measureScheme(point, candidate, pos, *repeats, *warmups, rw, meta)
+			saveJSON(*out+".meta.json", meta)
 		}
-		writer.Flush()
-		return writer.Error()
-	}); err != nil {
-		fatal(err)
+		for _, candidate := range schemes {
+			for _, phase := range []string{"Store", "ProofGen", "Verify"} {
+				writeSummary(w, point, candidate.name, phase, values[candidate.name][phase])
+			}
+		}
+		w.Flush()
+		must(w.Error())
 	}
-	writer.Flush()
-	if err := writer.Error(); err != nil {
-		fatal(err)
-	}
-	fmt.Printf("wrote protocol execution measurements to %s\n", *outPath)
+	meta["complete"] = true
+	saveJSON(*out+".meta.json", meta)
+	fmt.Println("wrote", *out)
 }
 
-func runProfile(profile string, repeats int, phases string, emit func([]row) error) error {
-	var mValues, bValues, sValues []int
-	switch profile {
-	case "paper":
-		mValues = intRange(4, 20, 4)
-		bValues = intRange(10, 50, 10)
-		sValues = []int{20, 40, 60, 80, 100}
-	case "quick":
-		mValues = []int{1, 2}
-		bValues = []int{0}
-		sValues = []int{20}
-	default:
-		return fmt.Errorf("unknown profile %q", profile)
-	}
-
-	baseline := params{M: baseM, BMB: baseBMB, S: baseS, C: challengeSize}
-	if profile == "quick" {
-		baseline = params{M: 2, BMB: 0, S: 20, C: 8}
-		if repeats > 2 {
-			repeats = 2
+func measureScheme(p params, s scheme, pos, repeats, warmups int, rw *csv.Writer, meta map[string]any) samples {
+	runtime.GOMAXPROCS(4)
+	debug.FreeOSMemory()
+	fmt.Fprintf(os.Stderr, "%s preparing %s m=%d B_MB=%d s=%d bytes/file=%d\n", time.Now().Format(time.RFC3339), s.name, p.M, p.BMB, p.S, p.Bytes())
+	fx := s.prepare(p)
+	r := samples{}
+	r["Store"] = []float64{fx.prepMS}
+	writeRaw(rw, p, s.name, "Store", 1, pos, fx.prepMS, "measured", 0)
+	debug.FreeOSMemory()
+	runtime.GOMAXPROCS(1)
+	var mem runtime.MemStats
+	runtime.ReadMemStats(&mem)
+	meta["workload_heap_bytes"].(map[string]uint64)[storeKey(p, s.name)] = mem.HeapAlloc
+	fmt.Fprintf(os.Stderr, "%s measuring %s m=%d B_MB=%d s=%d heap_MB=%.1f\n", time.Now().Format(time.RFC3339), s.name, p.M, p.BMB, p.S, float64(mem.HeapAlloc)/1e6)
+	once := func(repeat int) {
+		runtime.GOMAXPROCS(4)
+		runtime.GC()
+		runtime.GOMAXPROCS(1)
+		if !fx.challenge() {
+			fatal(fmt.Errorf("%s challenge failed", s.name))
+		}
+		var before, after runtime.MemStats
+		runtime.ReadMemStats(&before)
+		start := time.Now()
+		ok := fx.prove()
+		pg := float64(time.Since(start).Nanoseconds()) / 1e6
+		if !ok {
+			fatal(fmt.Errorf("%s proof failed", s.name))
+		}
+		runtime.ReadMemStats(&after)
+		pgGC := after.NumGC - before.NumGC
+		before = after
+		start = time.Now()
+		ok = fx.verify()
+		vr := float64(time.Since(start).Nanoseconds()) / 1e6
+		if !ok {
+			fatal(fmt.Errorf("%s verification failed", s.name))
+		}
+		runtime.ReadMemStats(&after)
+		vrGC := after.NumGC - before.NumGC
+		if repeat > 0 {
+			r["ProofGen"] = append(r["ProofGen"], pg)
+			r["Verify"] = append(r["Verify"], vr)
+			writeRaw(rw, p, s.name, "ProofGen", repeat, pos, pg, "measured", pgGC)
+			writeRaw(rw, p, s.name, "Verify", repeat, pos, vr, "measured", vrGC)
 		}
 	}
-	if err := emit(runAllSchemes("baseline", "baseline", 0, baseline, repeats, phases)); err != nil {
-		return err
+	warmUntil := time.Now().Add(5 * time.Second)
+	for i := 0; i < warmups || time.Now().Before(warmUntil); i++ {
+		once(0)
 	}
-	for _, m := range mValues {
-		p := params{M: m, BMB: baseline.BMB, S: baseline.S, C: baseline.C}
-		if err := emit(runAllSchemes("vary_m", "m", m, p, repeats, phases)); err != nil {
-			return err
-		}
+	for i := 1; i <= repeats; i++ {
+		once(i)
 	}
-	for _, b := range bValues {
-		p := params{M: baseline.M, BMB: b, S: baseline.S, C: baseline.C}
-		if err := emit(runAllSchemes("vary_B", "B_MB", b, p, repeats, phases)); err != nil {
-			return err
-		}
-	}
-	for _, s := range sValues {
-		p := params{M: baseline.M, BMB: baseline.BMB, S: s, C: baseline.C}
-		if err := emit(runAllSchemes("vary_s", "s", s, p, repeats, phases)); err != nil {
-			return err
-		}
-	}
-	return nil
+	rw.Flush()
+	must(rw.Error())
+	return r
 }
 
-func runAllSchemes(scenario, variable string, value int, p params, repeats int, phases string) []row {
-	schemes := []struct {
-		name   string
-		fn     func(params) map[string]timedResult
-		online func(params, int) map[string]phaseSamples
-		store  func(params) timedResult
-	}{
-		{"YuTC25", runYu, runYuOnline, runYuStore},
-		{"ZhangTPDS23", runZhang, runZhangOnline, runZhangStore},
-		{"MiaoSCIS2026", runMiao, runMiaoOnline, runMiaoStore},
-		{"XuTIFS26", runXu, runXuOnline, runXuStore},
-		{"FoldAudit", runFoldAudit, runFoldAuditOnline, runFoldAuditStore},
-	}
-
-	var rows []row
-	for _, scheme := range schemes {
-		fmt.Fprintf(os.Stderr, "running %s scenario=%s %s=%d m=%d B_MB=%d s=%d c=%d n=%d repeats=%d\n",
-			scheme.name, scenario, variable, value, p.M, p.BMB, p.S, p.C, p.N(), repeats)
-		if phases == "online" {
-			results := scheme.online(p, repeats)
-			for _, phase := range []string{"ProofGen", "Verify"} {
-				sample := results[phase]
-				median, stddev := medianStdDev(sample.seconds)
-				rows = append(rows, row{Scenario: scenario, Variable: variable, Value: value, Scheme: scheme.name, Phase: phase, Params: p, Seconds: median, StdDev: stddev, Repeats: repeats, OK: sample.ok})
-			}
-			continue
-		}
-		if phases == "store" {
-			var samples []float64
-			ok := true
-			for repeat := 1; repeat <= repeats; repeat++ {
-				fmt.Fprintf(os.Stderr, "  repeat %d/%d\n", repeat, repeats)
-				result := scheme.store(p)
-				samples = append(samples, result.duration.Seconds())
-				ok = ok && result.ok
-			}
-			median, stddev := medianStdDev(samples)
-			rows = append(rows, row{Scenario: scenario, Variable: variable, Value: value, Scheme: scheme.name, Phase: "Store", Params: p, Seconds: median, StdDev: stddev, Repeats: repeats, OK: ok})
-			continue
-		}
-		samples := make(map[string][]float64)
-		phaseOK := map[string]bool{"Store": true, "Challenge": true, "ProofGen": true, "Verify": true, "Audit": true}
-		for repeat := 1; repeat <= repeats; repeat++ {
-			fmt.Fprintf(os.Stderr, "  repeat %d/%d\n", repeat, repeats)
-			results := scheme.fn(p)
-			for _, phase := range []string{"Store", "Challenge", "ProofGen", "Verify"} {
-				r := results[phase]
-				samples[phase] = append(samples[phase], r.duration.Seconds())
-				phaseOK[phase] = phaseOK[phase] && r.ok
-			}
-			audit := results["Challenge"].duration + results["ProofGen"].duration + results["Verify"].duration
-			auditOK := results["Challenge"].ok && results["ProofGen"].ok && results["Verify"].ok
-			samples["Audit"] = append(samples["Audit"], audit.Seconds())
-			phaseOK["Audit"] = phaseOK["Audit"] && auditOK
-		}
-		for _, phase := range []string{"Store", "Challenge", "ProofGen", "Verify"} {
-			median, stddev := medianStdDev(samples[phase])
-			rows = append(rows, row{Scenario: scenario, Variable: variable, Value: value, Scheme: scheme.name, Phase: phase, Params: p, Seconds: median, StdDev: stddev, Repeats: repeats, OK: phaseOK[phase]})
-		}
-		median, stddev := medianStdDev(samples["Audit"])
-		rows = append(rows, row{Scenario: scenario, Variable: variable, Value: value, Scheme: scheme.name, Phase: "Audit", Params: p, Seconds: median, StdDev: stddev, Repeats: repeats, OK: phaseOK["Audit"]})
-	}
-	return rows
+func storeKey(p params, name string) string {
+	return fmt.Sprintf("%d/%d/%d/%d/%s", p.M, p.BMB, p.S, p.C, name)
 }
-
-func runXu(p params) map[string]timedResult {
-	n := p.N()
-	protocol := xutifs26.NewProtocol(p.M, n, p.S)
-	data := dataset(p.M, n, p.S, "xu")
+func writeRaw(w *csv.Writer, p params, name, phase string, repeat, pos int, ms float64, source string, gcCycles uint32) {
+	must(w.Write([]string{strconv.Itoa(p.M), strconv.Itoa(p.BMB), strconv.Itoa(p.S), strconv.Itoa(p.C), name, phase, strconv.Itoa(repeat), strconv.Itoa(pos), fmt.Sprintf("%.6f", ms), "true", source, strconv.FormatUint(uint64(gcCycles), 10)}))
+}
+func writeSummary(w *csv.Writer, p params, name, phase string, v []float64) {
+	median, sd := medianStdDev(v)
+	dev, q1, q3 := "", "", ""
+	if len(v) > 1 {
+		dev = fmt.Sprintf("%.6f", sd)
+		q1 = fmt.Sprintf("%.6f", quantile(v, .25))
+		q3 = fmt.Sprintf("%.6f", quantile(v, .75))
+	}
+	n, s := p.native(name)
+	must(w.Write([]string{"vary_m", "m", strconv.Itoa(p.M), name, phase, strconv.Itoa(p.M), strconv.Itoa(p.BMB), strconv.Itoa(p.S), strconv.Itoa(p.C), strconv.Itoa(p.N()), fmt.Sprintf("%.6f", median), dev, q1, q3, strconv.Itoa(len(v)), "true", strconv.Itoa(n), strconv.Itoa(s), strconv.Itoa(p.Bytes()), strconv.Itoa(p.C * s * 32), "measured"}))
+}
+func quantile(v []float64, p float64) float64 {
+	x := append([]float64(nil), v...)
+	sort.Float64s(x)
+	at := p * float64(len(x)-1)
+	lo := int(at)
+	hi := min(lo+1, len(x)-1)
+	return x[lo] + (at-float64(lo))*(x[hi]-x[lo])
+}
+func prepTime(fn func() bool) float64 {
+	runtime.GC()
+	t := time.Now()
+	if !fn() {
+		fatal(fmt.Errorf("fixture storage failed"))
+	}
+	return float64(time.Since(t).Nanoseconds()) / 1e6
+}
+func prepareXu(p params) fixture {
+	protocol := xutifs26.NewProtocol(p.M, p.N(), p.S)
+	data := dataset(p.M, p.N(), p.S)
 	var stored *xutifs26.StoredBatch
-	store := timed(func() bool {
-		var err error
-		stored, err = protocol.Store(data)
-		return err == nil
-	})
 	var chal xutifs26.Challenge
-	challenge := timed(func() bool {
-		chal = protocol.Challenge(p.C)
-		return true
-	})
 	var proof *xutifs26.Proof
-	prove := timed(func() bool {
-		var err error
-		proof, err = protocol.Prove(stored, chal)
-		return err == nil
-	})
-	verify := timed(func() bool { return protocol.Verify(stored, chal, proof) })
-	return map[string]timedResult{"Store": store, "Challenge": challenge, "ProofGen": prove, "Verify": verify}
+	ms := prepTime(func() bool { var e error; stored, e = protocol.Store(data); return e == nil })
+	return fixture{"XuTIFS26", func() bool { chal = protocol.Challenge(p.C); return true }, func() bool { var e error; proof, e = protocol.Prove(stored, chal); return e == nil }, func() bool { return protocol.Verify(stored, chal, proof) }, ms}
 }
-
-func runXuStore(p params) timedResult {
-	n := p.N()
-	protocol := xutifs26.NewProtocol(p.M, n, p.S)
-	data := dataset(p.M, n, p.S, "xu")
-	return timed(func() bool {
-		_, err := protocol.Store(data)
-		return err == nil
-	})
-}
-
-func runXuOnline(p params, repeats int) map[string]phaseSamples {
-	n := p.N()
-	protocol := xutifs26.NewProtocol(p.M, n, p.S)
-	stored, err := protocol.Store(dataset(p.M, n, p.S, "xu"))
-	if err != nil {
-		return failedOnlineSamples()
-	}
-	samples := newOnlineSamples()
-	for repeat := 1; repeat <= repeats; repeat++ {
-		fmt.Fprintf(os.Stderr, "  repeat %d/%d\n", repeat, repeats)
-		chal := protocol.Challenge(p.C)
-		var proof *xutifs26.Proof
-		prove := timed(func() bool {
-			var err error
-			proof, err = protocol.Prove(stored, chal)
-			return err == nil
-		})
-		verify := timed(func() bool { return protocol.Verify(stored, chal, proof) })
-		appendOnlineSample(samples, "ProofGen", prove)
-		appendOnlineSample(samples, "Verify", verify)
-	}
-	return samples
-}
-
-func runYu(p params) map[string]timedResult {
-	n := p.N()
-	protocol := yutc25.NewProtocol(n, p.S)
-	data := dataset(p.M, n, p.S, "yu")
-	var stored *yutc25.StoredBatch
-	store := timed(func() bool {
-		var err error
-		stored, err = protocol.StoreBatch(data)
-		return err == nil
-	})
-	var chal yutc25.BatchChallenge
-	challenge := timed(func() bool {
-		chal = protocol.BatchChallenge(p.M, p.C)
-		return true
-	})
-	var proof *yutc25.BatchProof
-	prove := timed(func() bool {
-		var err error
-		proof, err = protocol.ProveBatch(stored, chal)
-		return err == nil
-	})
-	verify := timed(func() bool { return protocol.VerifyBatch(stored, chal, proof) })
-	return map[string]timedResult{"Store": store, "Challenge": challenge, "ProofGen": prove, "Verify": verify}
-}
-
-func runYuStore(p params) timedResult {
-	n := p.N()
-	protocol := yutc25.NewProtocol(n, p.S)
-	data := dataset(p.M, n, p.S, "yu")
-	return timed(func() bool {
-		_, err := protocol.StoreBatch(data)
-		return err == nil
-	})
-}
-
-func runYuOnline(p params, repeats int) map[string]phaseSamples {
-	n := p.N()
-	protocol := yutc25.NewProtocol(n, p.S)
-	stored, err := protocol.StoreBatch(dataset(p.M, n, p.S, "yu"))
-	if err != nil {
-		return failedOnlineSamples()
-	}
-	samples := newOnlineSamples()
-	for repeat := 1; repeat <= repeats; repeat++ {
-		fmt.Fprintf(os.Stderr, "  repeat %d/%d\n", repeat, repeats)
-		chal := protocol.BatchChallenge(p.M, p.C)
-		var proof *yutc25.BatchProof
-		prove := timed(func() bool {
-			var err error
-			proof, err = protocol.ProveBatch(stored, chal)
-			return err == nil
-		})
-		verify := timed(func() bool { return protocol.VerifyBatch(stored, chal, proof) })
-		appendOnlineSample(samples, "ProofGen", prove)
-		appendOnlineSample(samples, "Verify", verify)
-	}
-	return samples
-}
-
-func runZhang(p params) map[string]timedResult {
-	n := p.N()
-	protocol := zhangtpds23.NewProtocol(p.M, n, p.S)
-	data := dataset(p.M, n, p.S, "zhang")
+func prepareZhang(p params) fixture {
+	protocol := zhangtpds23.NewProtocol(p.M, p.N(), p.S)
+	data := dataset(p.M, p.N(), p.S)
 	var stored *zhangtpds23.StoredBatch
-	store := timed(func() bool {
-		var err error
-		stored, err = protocol.Store(data)
-		return err == nil
-	})
 	var chal zhangtpds23.Challenge
-	challenge := timed(func() bool {
-		chal = protocol.Challenge(p.C)
-		return true
-	})
 	var proof *zhangtpds23.Proof
-	prove := timed(func() bool {
-		var err error
-		proof, err = protocol.Prove(stored, chal)
-		return err == nil
-	})
-	verify := timed(func() bool { return protocol.Verify(stored, chal, proof) })
-	return map[string]timedResult{"Store": store, "Challenge": challenge, "ProofGen": prove, "Verify": verify}
+	ms := prepTime(func() bool { var e error; stored, e = protocol.Store(data); return e == nil })
+	return fixture{"ZhangTPDS23", func() bool { chal = protocol.Challenge(p.C); return true }, func() bool { var e error; proof, e = protocol.Prove(stored, chal); return e == nil }, func() bool { return protocol.Verify(stored, chal, proof) }, ms}
 }
-
-func runZhangStore(p params) timedResult {
-	n := p.N()
-	protocol := zhangtpds23.NewProtocol(p.M, n, p.S)
-	data := dataset(p.M, n, p.S, "zhang")
-	return timed(func() bool {
-		_, err := protocol.Store(data)
-		return err == nil
-	})
-}
-
-func runZhangOnline(p params, repeats int) map[string]phaseSamples {
-	n := p.N()
-	protocol := zhangtpds23.NewProtocol(p.M, n, p.S)
-	stored, err := protocol.Store(dataset(p.M, n, p.S, "zhang"))
-	if err != nil {
-		return failedOnlineSamples()
-	}
-	samples := newOnlineSamples()
-	for repeat := 1; repeat <= repeats; repeat++ {
-		fmt.Fprintf(os.Stderr, "  repeat %d/%d\n", repeat, repeats)
-		chal := protocol.Challenge(p.C)
-		var proof *zhangtpds23.Proof
-		prove := timed(func() bool {
-			var err error
-			proof, err = protocol.Prove(stored, chal)
-			return err == nil
-		})
-		verify := timed(func() bool { return protocol.Verify(stored, chal, proof) })
-		appendOnlineSample(samples, "ProofGen", prove)
-		appendOnlineSample(samples, "Verify", verify)
-	}
-	return samples
-}
-
-func runMiao(p params) map[string]timedResult {
-	n := p.N()
+func prepareMiao(p params) fixture {
+	n, _ := p.native("MiaoSCIS2026")
 	protocol := miaoscis2026.NewProtocol(n)
-	files := miaoFiles(p.M, n)
+	data := miaoFiles(p.M, n)
 	var stored *miaoscis2026.StoredData
-	store := timed(func() bool {
-		var err error
-		stored, err = protocol.Store(files)
-		return err == nil
-	})
 	var chal miaoscis2026.Challenge
-	challenge := timed(func() bool {
-		trap, err := protocol.Trapdoor(stored, []string{"audit"})
-		if err != nil {
+	var proof *miaoscis2026.Proof
+	ms := prepTime(func() bool {
+		var e error
+		stored, e = protocol.StoreWithWorkers(data, preparationWorkers)
+		return e == nil
+	})
+	return fixture{"MiaoSCIS2026", func() bool {
+		trap, e := protocol.Trapdoor(stored, []string{"audit"})
+		if e != nil {
 			return false
 		}
 		chal = protocol.ChallengeWithTrapdoor(trap, p.C, p.M)
 		return true
-	})
-	var proof *miaoscis2026.Proof
-	prove := timed(func() bool {
-		var err error
-		proof, err = protocol.Prove(stored, chal)
-		return err == nil
-	})
-	verify := timed(func() bool { return protocol.Verify(stored, chal, proof) })
-	return map[string]timedResult{"Store": store, "Challenge": challenge, "ProofGen": prove, "Verify": verify}
+	}, func() bool { var e error; proof, e = protocol.Prove(stored, chal); return e == nil }, func() bool { return protocol.Verify(stored, chal, proof) }, ms}
 }
-
-func runMiaoStore(p params) timedResult {
-	n := p.N()
-	protocol := miaoscis2026.NewProtocol(n)
-	files := miaoFiles(p.M, n)
-	return timed(func() bool {
-		_, err := protocol.Store(files)
-		return err == nil
-	})
+func prepareYu(p params) fixture {
+	protocol := yutc25.NewProtocol(p.N(), p.S)
+	data := dataset(p.M, p.N(), p.S)
+	var stored *yutc25.StoredBatch
+	var chal yutc25.BatchChallenge
+	var proof *yutc25.BatchProof
+	ms := prepTime(func() bool { var e error; stored, e = protocol.StoreBatch(data); return e == nil })
+	return fixture{"YuTC25", func() bool { chal = protocol.BatchChallenge(p.M, p.C); return true }, func() bool { var e error; proof, e = protocol.ProveBatch(stored, chal); return e == nil }, func() bool { return protocol.VerifyBatch(stored, chal, proof) }, ms}
 }
-
-func runMiaoOnline(p params, repeats int) map[string]phaseSamples {
-	n := p.N()
-	protocol := miaoscis2026.NewProtocol(n)
-	stored, err := protocol.Store(miaoFiles(p.M, n))
-	if err != nil {
-		return failedOnlineSamples()
-	}
-	samples := newOnlineSamples()
-	for repeat := 1; repeat <= repeats; repeat++ {
-		fmt.Fprintf(os.Stderr, "  repeat %d/%d\n", repeat, repeats)
-		trap, err := protocol.Trapdoor(stored, []string{"audit"})
-		if err != nil {
-			appendOnlineSample(samples, "ProofGen", timedResult{ok: false})
-			appendOnlineSample(samples, "Verify", timedResult{ok: false})
-			continue
-		}
-		chal := protocol.ChallengeWithTrapdoor(trap, p.C, p.M)
-		var proof *miaoscis2026.Proof
-		prove := timed(func() bool {
-			var err error
-			proof, err = protocol.Prove(stored, chal)
-			return err == nil
-		})
-		verify := timed(func() bool { return protocol.Verify(stored, chal, proof) })
-		appendOnlineSample(samples, "ProofGen", prove)
-		appendOnlineSample(samples, "Verify", verify)
-	}
-	return samples
-}
-
-func runFoldAudit(p params) map[string]timedResult {
-	n := p.N()
-	cfg := foldaudit.DefaultConfig()
+func prepareMultiAudit(p params) fixture {
+	cfg := multiaudit.DefaultConfig()
 	cfg.NumFiles = p.M
-	cfg.ChunksPerFile = n
+	cfg.ChunksPerFile = p.N()
 	cfg.SectorsPerChunk = p.S
 	cfg.ChallengedChunks = p.C
-	protocol, err := foldaudit.Setup(cfg, newDeterministicReader(42))
-	if err != nil {
-		return failedResults()
-	}
-	data := dataset(p.M, n, p.S, "foldaudit")
-	var stored *foldaudit.StoredBatch
-	store := timed(func() bool {
-		var err error
-		stored, err = protocol.Store(data)
-		return err == nil
-	})
-	var chal *foldaudit.Challenge
-	challenge := timed(func() bool {
-		var err error
-		chal, err = protocol.Challenge()
-		return err == nil
-	})
-	var proof *foldaudit.AuditProof
-	prove := timed(func() bool {
-		var err error
-		proof, err = protocol.ProofGen(stored, chal)
-		return err == nil
-	})
-	verify := timed(func() bool { return protocol.Verify(stored, chal, proof) })
-	return map[string]timedResult{"Store": store, "Challenge": challenge, "ProofGen": prove, "Verify": verify}
+	protocol, e := multiaudit.Setup(cfg, newDeterministicReader(42))
+	must(e)
+	data := dataset(p.M, p.N(), p.S)
+	var stored *multiaudit.StoredBatch
+	var chal *multiaudit.Challenge
+	var proof *multiaudit.AuditProof
+	ms := prepTime(func() bool { var e error; stored, e = protocol.Store(data); return e == nil })
+	return fixture{"MultiAudit", func() bool { var e error; chal, e = protocol.Challenge(); return e == nil }, func() bool { var e error; proof, e = protocol.ProofGen(stored, chal); return e == nil }, func() bool { return protocol.Verify(stored, chal, proof) }, ms}
 }
-
-func runFoldAuditStore(p params) timedResult {
-	n := p.N()
-	cfg := foldaudit.DefaultConfig()
-	cfg.NumFiles = p.M
-	cfg.ChunksPerFile = n
-	cfg.SectorsPerChunk = p.S
-	cfg.ChallengedChunks = p.C
-	protocol, err := foldaudit.Setup(cfg, newDeterministicReader(42))
-	if err != nil {
-		return timedResult{ok: false}
-	}
-	data := dataset(p.M, n, p.S, "foldaudit")
-	return timed(func() bool {
-		_, err := protocol.Store(data)
-		return err == nil
-	})
-}
-
-func runFoldAuditOnline(p params, repeats int) map[string]phaseSamples {
-	n := p.N()
-	cfg := foldaudit.DefaultConfig()
-	cfg.NumFiles = p.M
-	cfg.ChunksPerFile = n
-	cfg.SectorsPerChunk = p.S
-	cfg.ChallengedChunks = p.C
-	protocol, err := foldaudit.Setup(cfg, newDeterministicReader(42))
-	if err != nil {
-		return failedOnlineSamples()
-	}
-	stored, err := protocol.Store(dataset(p.M, n, p.S, "foldaudit"))
-	if err != nil {
-		return failedOnlineSamples()
-	}
-	samples := newOnlineSamples()
-	for repeat := 1; repeat <= repeats; repeat++ {
-		fmt.Fprintf(os.Stderr, "  repeat %d/%d\n", repeat, repeats)
-		chal, err := protocol.Challenge()
-		if err != nil {
-			appendOnlineSample(samples, "ProofGen", timedResult{ok: false})
-			appendOnlineSample(samples, "Verify", timedResult{ok: false})
-			continue
-		}
-		var proof *foldaudit.AuditProof
-		prove := timed(func() bool {
-			var err error
-			proof, err = protocol.ProofGen(stored, chal)
-			return err == nil
-		})
-		verify := timed(func() bool { return protocol.Verify(stored, chal, proof) })
-		appendOnlineSample(samples, "ProofGen", prove)
-		appendOnlineSample(samples, "Verify", verify)
-	}
-	return samples
-}
-
-func newOnlineSamples() map[string]phaseSamples {
-	return map[string]phaseSamples{
-		"ProofGen": {ok: true},
-		"Verify":   {ok: true},
-	}
-}
-
-func appendOnlineSample(samples map[string]phaseSamples, phase string, result timedResult) {
-	sample := samples[phase]
-	sample.seconds = append(sample.seconds, result.duration.Seconds())
-	sample.ok = sample.ok && result.ok
-	samples[phase] = sample
-}
-
-func failedOnlineSamples() map[string]phaseSamples {
-	return map[string]phaseSamples{
-		"ProofGen": {ok: false},
-		"Verify":   {ok: false},
-	}
-}
-
-func dataset(m, n, s int, label string) [][][]*big.Int {
+func dataset(m, n, s int) [][][]*big.Int {
 	out := make([][][]*big.Int, m)
-	for i := 0; i < m; i++ {
+	for i := range out {
 		out[i] = make([][]*big.Int, n)
-		for j := 0; j < n; j++ {
-			out[i][j] = make([]*big.Int, s)
-			for k := 0; k < s; k++ {
-				out[i][j][k] = benchcore.Scalar(label, i*n*s+j*s+k)
+		flat := benchcore.NewStoredScalars(n * s)
+		for j := range out[i] {
+			out[i][j] = flat[j*s : (j+1)*s : (j+1)*s]
+			for k := range out[i][j] {
+				out[i][j][k].Set(benchcore.Scalar("equal-byte-file", i*n*s+j*s+k))
 			}
 		}
 	}
 	return out
 }
-
 func miaoFiles(m, n int) []struct {
 	FID      string
 	Keywords []string
 	Blocks   []*big.Int
 } {
-	files := make([]struct {
+	out := make([]struct {
 		FID      string
 		Keywords []string
 		Blocks   []*big.Int
 	}, m)
-	for i := 0; i < m; i++ {
-		blocks := make([]*big.Int, n)
-		for j := 0; j < n; j++ {
-			blocks[j] = benchcore.Scalar("miao", i*n+j)
-		}
-		files[i] = struct {
-			FID      string
-			Keywords []string
-			Blocks   []*big.Int
-		}{
-			FID:      fmt.Sprintf("file-%d", i),
-			Keywords: []string{"audit", fmt.Sprintf("kw-%d", i%3)},
-			Blocks:   blocks,
+	for i := range out {
+		out[i].FID = fmt.Sprintf("file-%d", i)
+		out[i].Keywords = []string{"audit", fmt.Sprintf("kw-%d", i%3)}
+		out[i].Blocks = benchcore.NewStoredScalars(n)
+		for j := range out[i].Blocks {
+			out[i].Blocks[j].Set(benchcore.Scalar("equal-byte-file", i*n+j))
 		}
 	}
-	return files
+	return out
 }
-
-func timed(fn func() bool) timedResult {
-	runtime.GC()
-	start := time.Now()
-	ok := fn()
-	return timedResult{duration: time.Since(start), ok: ok}
+func createCSV(path string) (*os.File, *csv.Writer) {
+	must(os.MkdirAll(filepath.Dir(path), 0755))
+	f, err := os.Create(path)
+	must(err)
+	return f, csv.NewWriter(f)
 }
-
-func failedResults() map[string]timedResult {
-	return map[string]timedResult{
-		"Store":     {ok: false},
-		"Challenge": {ok: false},
-		"ProofGen":  {ok: false},
-		"Verify":    {ok: false},
-	}
-}
-
-func createCSV(path string) (*os.File, *csv.Writer, error) {
-	if err := os.MkdirAll(parentDir(path), 0o755); err != nil {
-		return nil, nil, err
-	}
-	file, err := os.Create(path)
-	if err != nil {
-		return nil, nil, err
-	}
-	return file, csv.NewWriter(file), nil
-}
-
-func writeCSVHeader(w *csv.Writer) error {
-	header := []string{"measurement_method", "scenario", "variable", "value", "scheme", "phase", "m", "B_MB", "s", "c", "n", "seconds", "seconds_stddev", "repeats", "ok"}
-	return w.Write(header)
-}
-
-func writeCSVRows(w *csv.Writer, rows []row) error {
-	for _, r := range rows {
-		record := []string{
-			"protocol_execution",
-			r.Scenario,
-			r.Variable,
-			strconv.Itoa(r.Value),
-			r.Scheme,
-			r.Phase,
-			strconv.Itoa(r.Params.M),
-			strconv.Itoa(r.Params.BMB),
-			strconv.Itoa(r.Params.S),
-			strconv.Itoa(r.Params.C),
-			strconv.Itoa(r.Params.N()),
-			strconv.FormatFloat(r.Seconds, 'f', 9, 64),
-			strconv.FormatFloat(r.StdDev, 'f', 9, 64),
-			strconv.Itoa(r.Repeats),
-			strconv.FormatBool(r.OK),
-		}
-		if err := w.Write(record); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func medianStdDev(values []float64) (float64, float64) {
 	if len(values) == 0 {
 		return 0, 0
@@ -672,60 +324,51 @@ func medianStdDev(values []float64) (float64, float64) {
 	sorted := append([]float64(nil), values...)
 	sort.Float64s(sorted)
 	mid := len(sorted) / 2
-	median := sorted[mid]
+	med := sorted[mid]
 	if len(sorted)%2 == 0 {
-		median = (sorted[mid-1] + sorted[mid]) / 2
+		med = (sorted[mid-1] + sorted[mid]) / 2
 	}
-	var sum float64
+	sum := 0.0
 	for _, v := range values {
 		sum += v
 	}
 	mean := sum / float64(len(values))
 	if len(values) == 1 {
-		return median, 0
+		return med, 0
 	}
-	var squared float64
+	sq := 0.0
 	for _, v := range values {
-		diff := v - mean
-		squared += diff * diff
+		sq += (v - mean) * (v - mean)
 	}
-	return median, math.Sqrt(squared / float64(len(values)-1))
+	return med, math.Sqrt(sq / float64(len(values)-1))
 }
-
-func intRange(start, end, step int) []int {
-	var out []int
-	for v := start; v <= end; v += step {
-		out = append(out, v)
+func saveJSON(path string, v any) {
+	b, err := json.MarshalIndent(v, "", "  ")
+	must(err)
+	must(os.WriteFile(path, append(b, '\n'), 0644))
+}
+func must(err error) {
+	if err != nil {
+		fatal(err)
 	}
-	return out
 }
+func fatal(err error) { fmt.Fprintln(os.Stderr, err); os.Exit(1) }
 
-func parentDir(path string) string {
-	for i := len(path) - 1; i >= 0; i-- {
-		if path[i] == '/' {
-			return path[:i]
-		}
-	}
-	return "."
-}
+type deterministicReader struct{ state uint64 }
 
-func fatal(err error) {
-	fmt.Fprintln(os.Stderr, err)
-	os.Exit(1)
-}
-
-type deterministicReader struct {
-	state uint64
-}
-
-func newDeterministicReader(seed uint64) *deterministicReader {
-	return &deterministicReader{state: seed}
-}
-
+func newDeterministicReader(seed uint64) *deterministicReader { return &deterministicReader{seed} }
 func (r *deterministicReader) Read(p []byte) (int, error) {
 	for i := range p {
 		r.state = r.state*6364136223846793005 + 1442695040888963407
 		p[i] = byte(r.state >> 56)
 	}
 	return len(p), nil
+}
+
+func binaryFingerprint() string {
+	path, e := os.Executable()
+	must(e)
+	b, e := os.ReadFile(path)
+	must(e)
+	return fmt.Sprintf("%x", sha256.Sum256(b))
 }

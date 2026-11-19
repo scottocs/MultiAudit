@@ -1,4 +1,4 @@
-module foldaudit
+module multiaudit
 
 go 1.24.3
 

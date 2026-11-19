@@ -1,0 +1,17 @@
+{
+  "protocol": "foldaudit/compact-merkle-shplonk/v1",
+  "storage_backend": "owned-scalar-arena/v1",
+  "arithmetic_backend": "shared-delayed-reduction/v1",
+  "goarch": "arm64",
+  "goos": "darwin",
+  "go_version": "go1.25.4",
+  "m": 40,
+  "n": 3907,
+  "s": 80,
+  "repeats": 30,
+  "g1_bytes": 64,
+  "scalar_bytes": 32,
+  "digest_bytes": 32,
+  "c": 690,
+  "complete": true
+}

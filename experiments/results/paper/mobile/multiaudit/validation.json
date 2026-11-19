@@ -1,0 +1,69 @@
+{
+  "platform": "physical iPhone",
+  "model": "iPhone14,5",
+  "operating_system": "Version 26.6.2 (Build 23G90)",
+  "measured_audits": 30,
+  "store_files": 10,
+  "m_scan": [
+    10
+  ],
+  "schemes": [
+    "MultiAudit"
+  ],
+  "all_measured_audits_verified": true,
+  "wire_sizes_match_native_formats": true,
+  "phone_roles": [
+    "owner Setup",
+    "Store",
+    "Challenge",
+    "optional Verify"
+  ],
+  "cloud_role": "ProofGen",
+  "raw_sha256": "c0796ade42ab1c9bdf2f2b5b95ca081de9a265d45b43173ddab1de77b9539dcb",
+  "store_statistic": "single complete batch per configuration; files processed sequentially",
+  "audit_statistic": "median and inclusive interquartile range; warmups retained but excluded from summary",
+  "energy_measured": false,
+  "rows": [
+    {
+      "scheme": "MultiAudit",
+      "m": 10,
+      "native_store_total_ms": 3242.951083,
+      "store_upload_total_ms": 74851.37016700208,
+      "store_peak_footprint_mib": 200.68853759765625,
+      "maximum_thermal_state": 1,
+      "verifyMS_median": 122.2213125,
+      "verifyMS_p25": 119.3071775,
+      "verifyMS_p75": 122.60355225,
+      "decodeMS_median": 9.762708499999999,
+      "decodeMS_p25": 8.10063575,
+      "decodeMS_p75": 10.19763525,
+      "challengeMS_median": 4.479125,
+      "challengeMS_p25": 4.440687500000001,
+      "challengeMS_p75": 4.5260725,
+      "endToEndMS_median": 796.6403544992208,
+      "endToEndMS_p25": 719.2098230011761,
+      "endToEndMS_p75": 979.2383754998446,
+      "cpuMS_median": 213.70100000000002,
+      "cpuMS_p25": 210.18050000000085,
+      "cpuMS_p75": 231.72599999999966,
+      "roundTripMS_median": 632.0752079933882,
+      "roundTripMS_p25": 555.1426247470081,
+      "roundTripMS_p75": 815.4369062520564,
+      "bridgeVerifyMS_median": 157.52531199902296,
+      "bridgeVerifyMS_p25": 157.17001048848033,
+      "bridgeVerifyMS_p75": 158.1936977468431,
+      "downloadBodyBytes_median": 867220.0,
+      "downloadBodyBytes_p25": 864180.0,
+      "downloadBodyBytes_p75": 870820.0,
+      "uploadBodyBytes_median": 223912.0,
+      "uploadBodyBytes_p25": 223912.0,
+      "uploadBodyBytes_p75": 223912.0,
+      "peakFootprintBytes_median": 39470120.0,
+      "peakFootprintBytes_p25": 39261224.0,
+      "peakFootprintBytes_p75": 39883816.0,
+      "serverWorkMS_median": 55.349875,
+      "serverWorkMS_p25": 54.330395249999995,
+      "serverWorkMS_p75": 55.641729500000004
+    }
+  ]
+}

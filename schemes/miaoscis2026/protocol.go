@@ -7,10 +7,11 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
+	"sync"
 
 	bn256 "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare"
 
-	"foldaudit/schemes/benchcore"
+	"multiaudit/schemes/benchcore"
 )
 
 type Protocol struct {
@@ -74,11 +75,28 @@ func NewProtocol(n int) *Protocol {
 	}
 }
 
-func (p *Protocol) Store(files []struct {
+type InputFile = struct {
 	FID      string
 	Keywords []string
 	Blocks   []*big.Int
-}) (*StoredData, error) {
+}
+
+func (p *Protocol) Store(files []InputFile) (*StoredData, error) {
+	return p.StoreWithWorkers(files, 1)
+}
+
+// StoreWithWorkers prepares the same complete stored data with independent
+// files in parallel. Online benchmarks exclude this preparation from timers.
+func (p *Protocol) StoreWithWorkers(files []InputFile, workers int) (*StoredData, error) {
+	if workers < 1 {
+		return nil, fmt.Errorf("workers must be positive")
+	}
+	for i, input := range files {
+		if len(input.Blocks) != p.N {
+			return nil, fmt.Errorf("file %d: expected %d blocks", i, p.N)
+		}
+	}
+
 	out := &StoredData{
 		Files:         make([]File, len(files)),
 		KeywordRows:   make(map[string]int),
@@ -104,14 +122,12 @@ func (p *Protocol) Store(files []struct {
 			row++
 		}
 	}
-	for i, input := range files {
-		if len(input.Blocks) != p.N {
-			return nil, fmt.Errorf("file %d: expected %d blocks", i, p.N)
-		}
+	storeFile := func(i int) {
+		input := files[i]
 		f := File{
 			FID:      []byte(input.FID),
 			Keywords: append([]string(nil), input.Keywords...),
-			Blocks:   make([]*big.Int, p.N),
+			Blocks:   benchcore.CloneStoredScalars(input.Blocks),
 			Aux:      make([]string, p.N),
 			Sigmas:   make([]*bn256.G1, p.N),
 		}
@@ -119,8 +135,7 @@ func (p *Protocol) Store(files []struct {
 		base := benchcore.G1Add(f.HF, h2FID(f.FID))
 		// Omega cancels the file/keyword base terms during verification.
 		f.Omega = benchcore.G1Mul(base, benchcore.Neg(p.x))
-		for j, block := range input.Blocks {
-			f.Blocks[j] = benchcore.Normalize(block)
+		for j := range input.Blocks {
 			f.Aux[j] = fmt.Sprintf("au-%d-%d", i, j)
 			body := benchcore.G1Add(base, h3Aux(f.Aux[j]))
 			body = benchcore.G1Add(body, benchcore.G1Mul(p.U, f.Blocks[j]))
@@ -129,6 +144,29 @@ func (p *Protocol) Store(files []struct {
 		}
 		out.Files[i] = f
 	}
+	if workers == 1 {
+		for i := range files {
+			storeFile(i)
+		}
+	} else {
+		jobs := make(chan int)
+		var wg sync.WaitGroup
+		for w := 0; w < min(workers, len(files)); w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for i := range jobs {
+					storeFile(i)
+				}
+			}()
+		}
+		for i := range files {
+			jobs <- i
+		}
+		close(jobs)
+		wg.Wait()
+	}
+
 	for keyword, row := range out.KeywordRows {
 		plain := make([]byte, len(out.Files))
 		for i, file := range out.Files {
@@ -210,18 +248,25 @@ func (p *Protocol) challengeCoeffs(k2 []byte, c int, files int) [][]*big.Int {
 
 func (p *Protocol) Prove(stored *StoredData, chal Challenge) (*Proof, error) {
 	matched := matchedByChallenge(stored, chal)
-	tAuth := benchcore.G1Zero()
-	mu := benchcore.Zero()
+	points := make([]*bn256.G1, 0, len(matched)*len(chal.Indices))
+	scalars := make([]*big.Int, 0, cap(points))
+	var muSum benchcore.ScalarAccumulator
 	for _, fileIndex := range matched {
 		file := stored.Files[fileIndex]
 		for pos, blockIndex := range chal.Indices {
 			coeff := chal.Coeffs[fileIndex][pos]
 			// Aggregate authenticators and data values over all keyword-matched files.
-			tAuth = benchcore.G1Add(tAuth, benchcore.G1Mul(file.Sigmas[blockIndex], coeff))
-			mu = benchcore.Add(mu, benchcore.Mul(coeff, file.Blocks[blockIndex]))
+			points = append(points, file.Sigmas[blockIndex])
+			scalars = append(scalars, coeff)
+			muSum.AddProduct(coeff, file.Blocks[blockIndex])
 		}
 	}
-	r := benchcore.Scalar("miaoscis2026/mask/r", len(matched)+len(chal.Indices))
+	mu := muSum.Value()
+	tAuth := benchcore.G1MultiExp(points, scalars)
+	r, err := benchcore.RandomScalar(nil, true)
+	if err != nil {
+		return nil, fmt.Errorf("sample evaluation mask: %w", err)
+	}
 	R := benchcore.G1Base(r)
 	h := challengeHash(chal.Keywords, R)
 	// mu_1=mu-r*h(T_w,R) hides the aggregate data value.
@@ -234,22 +279,28 @@ func (p *Protocol) Verify(stored *StoredData, chal Challenge, proof *Proof) bool
 		return false
 	}
 	matched := matchedByChallenge(stored, chal)
-	left := proof.TAuth
-	right := benchcore.G1Zero()
+	leftPoints := []*bn256.G1{proof.TAuth}
+	leftScalars := []*big.Int{benchcore.One()}
+	rightPoints := make([]*bn256.G1, 0, len(matched)*len(chal.Indices)+2)
+	rightScalars := make([]*big.Int, 0, cap(rightPoints))
 	for _, fileIndex := range matched {
 		file := stored.Files[fileIndex]
-		sum := benchcore.Zero()
+		var coefficientSum benchcore.ScalarAccumulator
 		for pos, blockIndex := range chal.Indices {
 			coeff := chal.Coeffs[fileIndex][pos]
-			sum = benchcore.Add(sum, coeff)
+			coefficientSum.Add(coeff)
 			// The H_3(aux) terms reconstruct the non-data part of each authenticator.
-			right = benchcore.G1Add(right, benchcore.G1Mul(h3Aux(file.Aux[blockIndex]), coeff))
+			rightPoints = append(rightPoints, h3Aux(file.Aux[blockIndex]))
+			rightScalars = append(rightScalars, coeff)
 		}
 		// Omega removes the keyword/file identity factors accumulated in TAuth.
-		left = benchcore.G1Add(left, benchcore.G1Mul(file.Omega, sum))
+		leftPoints = append(leftPoints, file.Omega)
+		leftScalars = append(leftScalars, coefficientSum.Value())
 	}
-	right = benchcore.G1Add(right, benchcore.G1Mul(p.U, proof.Mu1))
-	right = benchcore.G1Add(right, benchcore.G1Mul(proof.R, challengeHash(chal.Keywords, proof.R)))
+	rightPoints = append(rightPoints, p.U, proof.R)
+	rightScalars = append(rightScalars, proof.Mu1, challengeHash(chal.Keywords, proof.R))
+	left := benchcore.G1MultiExp(leftPoints, leftScalars)
+	right := benchcore.G1MultiExp(rightPoints, rightScalars)
 	return benchcore.PairingEqual(left, p.G, right, p.Y)
 }
 

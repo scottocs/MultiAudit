@@ -1,0 +1,26 @@
+{
+  "module": "multiaudit",
+  "package": "schemes/multiaudit",
+  "display_name": "MultiAudit",
+  "environment_prefix": "MULTIAUDIT",
+  "wire_magic": "MA01",
+  "protocol": "multiaudit/compact-merkle-shplonk/v1",
+  "checks": {
+    "go_test": "passed",
+    "go_vet": "passed",
+    "onchain_go_vet": "passed",
+    "ios_arm64_archive": "passed",
+    "python_compile": "passed",
+    "renamed_wire_round_trips": "passed",
+    "renamed_onchain_smoke": "3 valid transactions; 21 negative cases rejected"
+  },
+  "recorded_measurements_unchanged": true,
+  "archived_sources_verified": true,
+  "current_sources_match_rename": true,
+  "manuscript_rendered_text_unchanged": true,
+  "native_summary_rows": 60,
+  "physical_iphone_recorded_audits": 90,
+  "onchain_new_namespace_valid_transactions": 3,
+  "onchain_new_namespace_negative_rejections": 21,
+  "source_archive_sha256": "7669d288f97b84bae41f89cd09dc12a2378898cb78ebec9bc767fa85d7965c4d"
+}

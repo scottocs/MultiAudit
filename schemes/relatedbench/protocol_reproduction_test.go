@@ -4,15 +4,15 @@ import (
 	"math/big"
 	"testing"
 
-	"foldaudit/schemes/benchcore"
-	"foldaudit/schemes/miaoscis2026"
-	"foldaudit/schemes/xutifs26"
-	"foldaudit/schemes/yutc25"
-	"foldaudit/schemes/zhangtpds23"
+	"multiaudit/schemes/benchcore"
+	"multiaudit/schemes/miaoscis2026"
+	"multiaudit/schemes/xutifs26"
+	"multiaudit/schemes/yutc25"
+	"multiaudit/schemes/zhangtpds23"
 )
 
 func TestXuTIFS26ProtocolRound(t *testing.T) {
-	m, n, s, c := 3, 8, 4, 3
+	m, n, s, c := 3, 64, 40, 40
 	p := xutifs26.NewProtocol(m, n, s)
 	stored, err := p.Store(dataset(m, n, s, "xu"))
 	if err != nil {
@@ -36,7 +36,7 @@ func TestXuTIFS26ProtocolRound(t *testing.T) {
 }
 
 func TestYuTC25ProtocolRound(t *testing.T) {
-	m, n, s, c := 3, 8, 4, 3
+	m, n, s, c := 3, 64, 40, 40
 	p := yutc25.NewProtocol(n, s)
 	stored, err := p.StoreBatch(dataset(m, n, s, "yu"))
 	if err != nil {
@@ -57,7 +57,7 @@ func TestYuTC25ProtocolRound(t *testing.T) {
 }
 
 func TestZhangTPDS23ProtocolRound(t *testing.T) {
-	m, n, s, c := 3, 8, 4, 3
+	m, n, s, c := 3, 64, 40, 40
 	p := zhangtpds23.NewProtocol(m, n, s)
 	stored, err := p.Store(dataset(m, n, s, "zhang"))
 	if err != nil {
@@ -81,7 +81,7 @@ func TestZhangTPDS23ProtocolRound(t *testing.T) {
 }
 
 func TestMiaoSCIS2026ProtocolRound(t *testing.T) {
-	n, c := 8, 3
+	n, c := 64, 40
 	p := miaoscis2026.NewProtocol(n)
 	files := []struct {
 		FID      string

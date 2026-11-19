@@ -1,0 +1,3 @@
+* text=auto eol=lf
+# Recorded observations and source archives retain their exact hashed bytes.
+experiments/results/paper/** -text whitespace=cr-at-eol

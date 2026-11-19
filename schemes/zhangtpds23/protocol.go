@@ -1,6 +1,6 @@
 // Package zhangtpds23 reproduces the PCS-MPAP batch auditing core from
 // Zhang et al. TPDS 2023 under the single-server normalization used in the
-// FoldAudit comparison.
+// MultiAudit comparison.
 package zhangtpds23
 
 import (
@@ -10,7 +10,7 @@ import (
 
 	bn256 "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare"
 
-	"foldaudit/schemes/benchcore"
+	"multiaudit/schemes/benchcore"
 )
 
 type Protocol struct {
@@ -74,12 +74,18 @@ func (p *Protocol) Store(data [][][]*big.Int) (*StoredBatch, error) {
 		if len(data[i]) != p.N {
 			return nil, fmt.Errorf("file %d: expected %d blocks", i, p.N)
 		}
+		for j, block := range data[i] {
+			if len(block) != p.S {
+				return nil, fmt.Errorf("file %d block %d: expected %d sectors", i, j, p.S)
+			}
+		}
+		values := benchcore.CloneStoredMatrix(data[i])
 		file := StoredFile{FileID: []byte(fmt.Sprintf("file-%d", i)), Blocks: make([]benchcore.Poly, p.N), Tags: make([]*bn256.G1, p.N)}
 		for j := 0; j < p.N; j++ {
 			if len(data[i][j]) != p.S {
 				return nil, fmt.Errorf("file %d block %d: expected %d sectors", i, j, p.S)
 			}
-			file.Blocks[j] = benchcore.NewPoly(data[i][j])
+			file.Blocks[j] = benchcore.StoredPolynomialView(values[j])
 			// sigma_{l,j}=(H(FID_l||j) * g^{f_{l,j}(alpha)})^x.
 			body := benchcore.G1Add(hashIndex(file.FileID, j), p.ownerCommit(file.Blocks[j]))
 			file.Tags[j] = benchcore.G1Mul(body, p.x)
@@ -146,38 +152,41 @@ func (p *Protocol) Prove(stored *StoredBatch, chal Challenge) (*Proof, error) {
 		return nil, fmt.Errorf("stored batch mismatch")
 	}
 	betas := p.betas(chal)
-	sigmaPrime := benchcore.G1Zero()
-	E := benchcore.Zero()
-	F := benchcore.NewPoly([]*big.Int{benchcore.Zero()})
-	sumBetaDiff := benchcore.NewPoly([]*big.Int{benchcore.Zero()})
+	tagPoints := make([]*bn256.G1, 0, p.M*len(chal.Indices[0]))
+	tagScalars := make([]*big.Int, 0, cap(tagPoints))
+	var eSum benchcore.ScalarAccumulator
+	fSum := benchcore.NewPolynomialAccumulator(p.S + p.M)
+	betaDiffSum := benchcore.NewPolynomialAccumulator(p.S)
 	for i, file := range stored.Files {
 		// F_l(X)=sum_j v_j f_{l,j}(X), with tags aggregated by the same coefficients.
-		agg := benchcore.NewPoly([]*big.Int{benchcore.Zero()})
-		tagAgg := benchcore.G1Zero()
+		sum := benchcore.NewPolynomialAccumulator(p.S)
 		if len(chal.Indices[i]) != len(chal.Coeffs[i]) {
 			return nil, fmt.Errorf("file %d challenge dimension mismatch", i)
 		}
 		for pos, index := range chal.Indices[i] {
-			agg = agg.Add(file.Blocks[index].Scale(chal.Coeffs[i][pos]))
-			tagAgg = benchcore.G1Add(tagAgg, benchcore.G1Mul(file.Tags[index], chal.Coeffs[i][pos]))
+			sum.AddScaled(file.Blocks[index], chal.Coeffs[i][pos])
+			tagPoints = append(tagPoints, file.Tags[index])
+			tagScalars = append(tagScalars, benchcore.Mul(chal.Coeffs[i][pos], betas[i]))
 		}
+		agg := sum.Polynomial()
 		S := agg.Eval(chal.Points[i])
 		diff := agg.SubConstant(S)
 		ztExcept := zExcept(chal.Points, i)
 		// Build F(X)=sum_l gamma^{l-1} Z_{T\{r_l}}(X)(F_l(X)-F_l(r_l)).
-		F = F.Add(ztExcept.Mul(diff).Scale(benchcore.Pow(chal.Gamma, i)))
-		sumBetaDiff = sumBetaDiff.Add(diff.Scale(betas[i]))
-		sigmaPrime = benchcore.G1Add(sigmaPrime, benchcore.G1Mul(tagAgg, betas[i]))
-		E = benchcore.Add(E, benchcore.Mul(betas[i], S))
+		fSum.AddScaled(ztExcept.Mul(diff), benchcore.Pow(chal.Gamma, i))
+		betaDiffSum.AddScaled(diff, betas[i])
+		eSum.AddProduct(betas[i], S)
 	}
-	Hb, rem, err := F.Div(benchcore.ZPoly(chal.Points))
+	F, sumBetaDiff, E := fSum.Polynomial(), betaDiffSum.Polynomial(), eSum.Value()
+	vanishing := benchcore.ZPoly(chal.Points)
+	Hb, rem, err := F.Div(vanishing)
 	if err != nil {
 		return nil, err
 	}
 	if !(len(rem.Coeffs) == 1 && rem.Coeffs[0].Sign() == 0) {
 		return nil, fmt.Errorf("batch polynomial is not divisible by Z_T")
 	}
-	ztAtZ := benchcore.ZPoly(chal.Points).Eval(chal.Z)
+	ztAtZ := vanishing.Eval(chal.Z)
 	L := sumBetaDiff.Sub(Hb.Scale(ztAtZ))
 	// W' opens L(X) at z after removing the (X-z) factor.
 	LQuotient, LRem := L.DivLinear(chal.Z)
@@ -185,7 +194,7 @@ func (p *Protocol) Prove(stored *StoredBatch, chal Challenge) (*Proof, error) {
 		return nil, fmt.Errorf("folded quotient polynomial has nonzero remainder")
 	}
 	return &Proof{
-		SigmaPrime: sigmaPrime,
+		SigmaPrime: benchcore.G1MultiExp(tagPoints, tagScalars),
 		W:          benchcore.CommitG1(p.SRSG1, Hb),
 		WPrime:     benchcore.CommitG1(p.SRSG1, LQuotient),
 		E:          E,
@@ -197,18 +206,20 @@ func (p *Protocol) Verify(stored *StoredBatch, chal Challenge, proof *Proof) boo
 		return false
 	}
 	betas := p.betas(chal)
-	zeta := benchcore.G1Zero()
+	points := make([]*bn256.G1, 0, p.M*len(chal.Indices[0]))
+	scalars := make([]*big.Int, 0, cap(points))
 	for i, file := range stored.Files {
 		if len(chal.Indices[i]) != len(chal.Coeffs[i]) {
 			return false
 		}
 		for pos, index := range chal.Indices[i] {
 			// zeta is the hash-authenticator side of the folded tag equation.
-			term := benchcore.G1Mul(hashIndex(file.FileID, index), chal.Coeffs[i][pos])
-			zeta = benchcore.G1Add(zeta, benchcore.G1Mul(term, betas[i]))
+			points = append(points, hashIndex(file.FileID, index))
+			scalars = append(scalars, benchcore.Mul(chal.Coeffs[i][pos], betas[i]))
 		}
 	}
 	ztAtZ := benchcore.ZPoly(chal.Points).Eval(chal.Z)
+	zeta := benchcore.G1MultiExp(points, scalars)
 	// psi=g^{-E} W^{-Z_T(z)} and uMinusZV=g_2^{x(alpha-z)}.
 	psi := benchcore.G1Add(benchcore.G1Base(benchcore.Neg(proof.E)), benchcore.G1Mul(proof.W, benchcore.Neg(ztAtZ)))
 	uMinusZV := benchcore.G2Add(p.U, benchcore.G2Mul(p.V, benchcore.Neg(chal.Z)))

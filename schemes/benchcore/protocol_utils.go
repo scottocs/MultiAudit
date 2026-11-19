@@ -1,7 +1,7 @@
 // Package benchcore contains shared finite-field, group, polynomial,
 // commitment, and Merkle utilities used by the protocol reproductions. The
 // helpers intentionally expose simple algebraic operations so the scheme code
-// can mirror the formulas in paper/refs/pdp_protocols.tex and FoldAudit.tex.
+// can mirror the formulas in paper/refs/pdp_protocols.tex and MultiAudit.tex.
 package benchcore
 
 import (
@@ -23,18 +23,25 @@ func Zero() *big.Int { return new(big.Int) }
 func One() *big.Int { return big.NewInt(1) }
 
 func Add(a, b *big.Int) *big.Int {
-	out := new(big.Int).Add(Normalize(a), Normalize(b))
-	out.Mod(out, Order)
-	return out
+	if a == nil {
+		return Normalize(b)
+	}
+	if b == nil {
+		return Normalize(a)
+	}
+	out := new(big.Int).Add(a, b)
+	return out.Mod(out, Order)
 }
 
 func Sub(a, b *big.Int) *big.Int {
-	out := new(big.Int).Sub(Normalize(a), Normalize(b))
-	out.Mod(out, Order)
-	if out.Sign() < 0 {
-		out.Add(out, Order)
+	if a == nil {
+		a = new(big.Int)
 	}
-	return out
+	if b == nil {
+		return Normalize(a)
+	}
+	out := new(big.Int).Sub(a, b)
+	return out.Mod(out, Order)
 }
 
 func Neg(a *big.Int) *big.Int {
@@ -45,9 +52,11 @@ func Neg(a *big.Int) *big.Int {
 }
 
 func Mul(a, b *big.Int) *big.Int {
-	out := new(big.Int).Mul(Normalize(a), Normalize(b))
-	out.Mod(out, Order)
-	return out
+	if a == nil || b == nil {
+		return new(big.Int)
+	}
+	out := new(big.Int).Mul(a, b)
+	return out.Mod(out, Order)
 }
 
 func Inv(a *big.Int) (*big.Int, error) {
@@ -84,8 +93,6 @@ func G2Base(k *big.Int) *bn256.G2 { return new(bn256.G2).ScalarBaseMult(Normaliz
 
 func G1Zero() *bn256.G1 { return G1Base(Zero()) }
 
-func G2Zero() *bn256.G2 { return G2Base(Zero()) }
-
 func G1Add(a, b *bn256.G1) *bn256.G1 { return new(bn256.G1).Add(a, b) }
 
 func G2Add(a, b *bn256.G2) *bn256.G2 { return new(bn256.G2).Add(a, b) }
@@ -103,13 +110,6 @@ func G2Mul(a *bn256.G2, k *big.Int) *bn256.G2 {
 }
 
 func G1Eq(a, b *bn256.G1) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return bytes.Equal(a.Marshal(), b.Marshal())
-}
-
-func G2Eq(a, b *bn256.G2) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
@@ -250,14 +250,20 @@ func (p Poly) Degree() int {
 	return len(p.Coeffs) - 1
 }
 
-func (p Poly) Add(q Poly) Poly {
-	size := len(p.Coeffs)
-	if len(q.Coeffs) > size {
-		size = len(q.Coeffs)
+func canonicalPolynomial(coeffs []*big.Int) Poly {
+	if len(coeffs) == 0 {
+		coeffs = []*big.Int{Zero()}
 	}
+	out := Poly{Coeffs: coeffs}
+	out.Trim()
+	return out
+}
+
+func (p Poly) Add(q Poly) Poly {
+	size := max(len(p.Coeffs), len(q.Coeffs))
 	out := make([]*big.Int, size)
-	for i := 0; i < size; i++ {
-		a, b := Zero(), Zero()
+	for i := range out {
+		var a, b *big.Int
 		if i < len(p.Coeffs) {
 			a = p.Coeffs[i]
 		}
@@ -266,11 +272,23 @@ func (p Poly) Add(q Poly) Poly {
 		}
 		out[i] = Add(a, b)
 	}
-	return NewPoly(out)
+	return canonicalPolynomial(out)
 }
 
 func (p Poly) Sub(q Poly) Poly {
-	return p.Add(q.Scale(Neg(One())))
+	size := max(len(p.Coeffs), len(q.Coeffs))
+	out := make([]*big.Int, size)
+	for i := range out {
+		var a, b *big.Int
+		if i < len(p.Coeffs) {
+			a = p.Coeffs[i]
+		}
+		if i < len(q.Coeffs) {
+			b = q.Coeffs[i]
+		}
+		out[i] = Sub(a, b)
+	}
+	return canonicalPolynomial(out)
 }
 
 func (p Poly) Scale(k *big.Int) Poly {
@@ -278,17 +296,25 @@ func (p Poly) Scale(k *big.Int) Poly {
 	for i, coeff := range p.Coeffs {
 		out[i] = Mul(coeff, k)
 	}
-	return NewPoly(out)
+	return canonicalPolynomial(out)
 }
 
 func (p Poly) Mul(q Poly) Poly {
+	if len(p.Coeffs) == 0 || len(q.Coeffs) == 0 {
+		return NewPoly(nil)
+	}
 	out := make([]*big.Int, len(p.Coeffs)+len(q.Coeffs)-1)
 	for i := range out {
-		out[i] = Zero()
+		out[i] = new(big.Int)
 	}
+	var product big.Int
 	for i, a := range p.Coeffs {
 		for j, b := range q.Coeffs {
-			out[i+j] = Add(out[i+j], Mul(a, b))
+			if a == nil || b == nil {
+				continue
+			}
+			product.Mul(a, b)
+			out[i+j].Add(out[i+j], &product)
 		}
 	}
 	return NewPoly(out)
@@ -296,12 +322,13 @@ func (p Poly) Mul(q Poly) Poly {
 
 func (p Poly) Eval(x *big.Int) *big.Int {
 	x = Normalize(x)
-	out := Zero()
+	out := new(big.Int)
 	for i := len(p.Coeffs) - 1; i >= 0; i-- {
-		out = Add(Mul(out, x), p.Coeffs[i])
-		if i == 0 {
-			break
+		out.Mul(out, x)
+		if p.Coeffs[i] != nil {
+			out.Add(out, p.Coeffs[i])
 		}
+		out.Mod(out, Order)
 	}
 	return out
 }
@@ -313,22 +340,27 @@ func (p Poly) SubConstant(c *big.Int) Poly {
 	return out
 }
 
+// DivLinear returns q and y satisfying p(X)=q(X)(X-root)+y. The
+// remainder is also p(root), so opening generation needs only this one pass.
 func (p Poly) DivLinear(root *big.Int) (Poly, *big.Int) {
-	// Synthetic division by (X-root); the returned remainder equals p(root).
 	root = Normalize(root)
+	if len(p.Coeffs) == 0 {
+		return NewPoly(nil), Zero()
+	}
 	if len(p.Coeffs) == 1 {
-		return NewPoly([]*big.Int{Zero()}), Normalize(p.Coeffs[0])
+		return NewPoly(nil), Normalize(p.Coeffs[0])
 	}
 	q := make([]*big.Int, len(p.Coeffs)-1)
 	carry := Normalize(p.Coeffs[len(p.Coeffs)-1])
 	for i := len(p.Coeffs) - 2; i >= 0; i-- {
-		q[i] = Normalize(carry)
-		carry = Add(p.Coeffs[i], Mul(root, carry))
-		if i == 0 {
-			break
+		q[i] = new(big.Int).Set(carry)
+		carry.Mul(carry, root)
+		if p.Coeffs[i] != nil {
+			carry.Add(carry, p.Coeffs[i])
 		}
+		carry.Mod(carry, Order)
 	}
-	return NewPoly(q), carry
+	return canonicalPolynomial(q), carry
 }
 
 func (p Poly) Div(divisor Poly) (Poly, Poly, error) {
@@ -374,14 +406,10 @@ func ZPoly(points []*big.Int) Poly {
 
 func CommitG1(srs []*bn256.G1, poly Poly) *bn256.G1 {
 	// KZG-style commitment sum_i coeff_i * g^{tau^i}, represented additively.
-	out := G1Zero()
-	for i, coeff := range poly.Coeffs {
-		if i >= len(srs) {
-			panic(fmt.Sprintf("degree %d exceeds SRS length %d", i, len(srs)))
-		}
-		out = G1Add(out, G1Mul(srs[i], coeff))
+	if len(poly.Coeffs) > len(srs) {
+		panic(fmt.Sprintf("degree %d exceeds SRS length %d", len(poly.Coeffs)-1, len(srs)))
 	}
-	return out
+	return G1MultiExp(srs[:len(poly.Coeffs)], poly.Coeffs)
 }
 
 type MerkleProof struct {

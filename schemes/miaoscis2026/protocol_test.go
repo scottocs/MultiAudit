@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"foldaudit/schemes/benchcore"
+	"multiaudit/schemes/benchcore"
 )
 
 func TestChallengeWithTrapdoorUsesFreshRandomKeys(t *testing.T) {
@@ -120,5 +120,63 @@ func assertUniqueInRange(t *testing.T, indices []int, want, n int) {
 			t.Fatalf("duplicate challenge index %d", index)
 		}
 		seen[index] = struct{}{}
+	}
+}
+
+// A repeated public challenge still needs an independently sampled mask.
+func TestProveUsesFreshMask(t *testing.T) {
+	p := NewProtocol(40)
+	files := []struct {
+		FID      string
+		Keywords []string
+		Blocks   []*big.Int
+	}{{"f0", []string{"audit"}, testScalars(40, "miao/fresh-mask")}}
+	stored, err := p.Store(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chal := p.Challenge([]string{"audit"}, 40, 1)
+	a, err := p.Prove(stored, chal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := p.Prove(stored, chal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if benchcore.G1Eq(a.R, b.R) {
+		t.Fatal("proofs reuse the evaluation mask")
+	}
+	if !p.Verify(stored, chal, a) || !p.Verify(stored, chal, b) {
+		t.Fatal("fresh masked proof rejected")
+	}
+}
+
+func TestParallelFixturePreparationMatchesStore(t *testing.T) {
+	p := NewProtocol(64)
+	files := []InputFile{{"f0", []string{"audit", "a"}, testScalars(64, "parallel/a")}, {"f1", []string{"audit", "b"}, testScalars(64, "parallel/b")}, {"f2", []string{"audit"}, testScalars(64, "parallel/c")}}
+	a, e := p.Store(files)
+	if e != nil {
+		t.Fatal(e)
+	}
+	b, e := p.StoreWithWorkers(files, 4)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for i := range a.Files {
+		for j := range a.Files[i].Sigmas {
+			if a.Files[i].Aux[j] != b.Files[i].Aux[j] || !benchcore.G1Eq(a.Files[i].Sigmas[j], b.Files[i].Sigmas[j]) {
+				t.Fatal("parallel preparation changes authenticators")
+			}
+		}
+	}
+	trap, e := p.Trapdoor(b, []string{"audit"})
+	if e != nil {
+		t.Fatal(e)
+	}
+	chal := p.ChallengeWithTrapdoor(trap, 40, len(files))
+	proof, e := p.Prove(b, chal)
+	if e != nil || !p.Verify(b, chal, proof) {
+		t.Fatal("prepared fixture rejected")
 	}
 }

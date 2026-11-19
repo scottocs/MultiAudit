@@ -14,9 +14,9 @@ func Normalize(x *big.Int) *big.Int {
 	if x == nil {
 		return new(big.Int)
 	}
-	out := new(big.Int).Mod(new(big.Int).Set(x), Order)
-	if out.Sign() < 0 {
-		out.Add(out, Order)
+	out := new(big.Int).Set(x)
+	if out.Sign() < 0 || out.Cmp(Order) >= 0 {
+		out.Mod(out, Order)
 	}
 	return out
 }
