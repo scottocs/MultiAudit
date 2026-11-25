@@ -1,4 +1,69 @@
 {
-  "figure1_sha256": "62a90694da5272c1d7ec1b5d29b8ee63f98c3476beb8d3c5deddfe4579afc540",
-  "scheme_name": "MultiAudit"
+  "figure1_sha256": "5ee150f4190034ef40fb417a2a4c0b0327a981a6a046a440dbd2ad6b496509b4",
+  "scheme_name": "MultiAudit",
+  "tex_sha256": "70ea176081e642e4ad14f7f2d742fde6a8cdd059c866434d7d62e2670ce5fe08",
+  "pdf_sha256": "fe90d6784a148e7ae5411bfc5f6bdb02a0d75a0766bf002a7b1edabd14a4d868",
+  "pdf_path": "output/pdf/MultiAudit.pdf",
+  "pages": 12,
+  "visual_review": {
+    "detail_pages": [
+      1,
+      2,
+      3,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "no_clipping_or_overlap": true,
+    "two_witness_generation_boxes": true,
+    "whole_document_contact_sheet_reviewed": true,
+    "communication_table_single_column": true,
+    "communication_table_original_three_column_style": true,
+    "cmm_four_level_tree": true,
+    "cmm_auxiliary_hash_comparison": {
+      "separate_paths": 9,
+      "multiproof": 2
+    },
+    "mobile_time_figure": true,
+    "scheme_name_mathtt": true,
+    "deployment_figures_single_row": true,
+    "uniform_algorithm_font": "mathsf",
+    "onchain_calldata_percentage_labels": 12,
+    "mobile_files": 40,
+    "deployment_panels_aligned": true,
+    "explicit_cmm_auxiliary_hash_root_check": true
+  },
+  "bibliography_entries": 46,
+  "all_bibliography_entries_cited": true,
+  "undefined_references": false,
+  "overfull_boxes": false,
+  "plot_layout": "three deployment panels in one row; all twelve on-chain percentage annotations retained",
+  "symbol_definition_audit": {
+    "excluded_table": "tab:notation",
+    "scope": [
+      "prose",
+      "algorithms",
+      "proofs",
+      "figures",
+      "cost comparisons"
+    ],
+    "explicit_query_count_bound": true,
+    "cmm_subtree_notation_in_caption": true,
+    "mkpdp_parameters_removed": true,
+    "mkpdp_keywords_per_file": 2,
+    "mkpdp_blocks_per_file": "ns"
+  },
+  "revision_456": {
+    "selected_recommendations": [
+      4,
+      5,
+      6
+    ],
+    "abstract_security_model_algorithms_proofs_figures_tables_unchanged": true,
+    "approximate_english_word_delta": -387
+  }
 }

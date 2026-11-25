@@ -8,11 +8,11 @@ import re
 import statistics
 from pathlib import Path
 from validate_results import DEFAULT, SCHEMES, validate, validate_response
-from onchain.report import load_results as load_onchain, latex_setup as onchain_setup, latex_results as onchain_results
-from mobile_report import load_results as load_mobile, latex_setup as mobile_setup, latex_results as mobile_results, abstract_sentence as mobile_abstract
+from onchain.batch_report import load_results as load_onchain, latex_setup as onchain_setup, latex_results as onchain_results
+from mobile_report import format_algorithm_names, load_results as load_mobile, latex_setup as mobile_setup, latex_results as mobile_results
 
 ROOT=Path(__file__).resolve().parents[1]
-DISPLAY={'ZhangTPDS23':r'Zhang et al.~\cite{ZhangTPDS23}','MiaoSCIS2026':r'Miao et al.~\cite{MiaoSCIS2026}','XuTIFS26':r'Xu et al.~\cite{XuTIFS26}','MultiAudit':'MultiAudit','YuTC25':r'Yu et al.~\cite{YuTC25}'}
+DISPLAY={'ZhangTPDS23':r'BPCS~\cite{ZhangTPDS23}','MiaoSCIS2026':r'MKPDP~\cite{MiaoSCIS2026}','XuTIFS26':r'MPA~\cite{XuTIFS26}','MultiAudit':r'\MultiAudit{}','YuTC25':r'Yu et al.~\cite{YuTC25}'}
 COLORS={'ZhangTPDS23':'228877','MiaoSCIS2026':'AA5588','XuTIFS26':'DD9933','MultiAudit':'3366AA','YuTC25':'889933'}
 NAME=DISPLAY
 
@@ -30,23 +30,12 @@ def expected_aux(n,c):
 
 def payload(name,m,n,s,c,G=64):
  L=(n-1).bit_length()
- if name=='MultiAudit':return (m*c+2*m+2)*G+2*m*32+m*expected_aux(n,c)*32
+ if name=='MultiAudit':return (m*c+2)*G+m*32+m*expected_aux(n,c)*32
  if name=='XuTIFS26':return m*(32+(c+1)*G+c*L*32)
  if name=='YuTC25':return m*(s*32+(c+1)*G+c*L*32)
  if name=='ZhangTPDS23':return 3*G+32
  if name=='MiaoSCIS2026':return 2*G+32
  raise ValueError(name)
-
-def analytical_example():
- m,s,c,n=40,80,690,3907;a=expected_aux(n,c)
- text=r'''\paragraph{Illustrative encoding-normalized comparison.}
-For $(m,s,c,n)=(40,80,690,3907)$, assume 48-byte $\GG_1$ elements and 32-byte scalars and hashes. These are uniform encoding assumptions; Section~\ref{sec:evaluation} uses the backend's actual 64-byte group encodings. For a uniformly sampled $c$-subset of $[n]$ and a subtree $B$ containing $k_B$ real positions,
-\[
-\Pr[B\text{ touched}]=1-\frac{\binom{n-k_B}{c}}{\binom nc}.
-\]
-Summing these probabilities over internal subtrees and subtracting $c-1$, by the reconstruction count after Equation~\eqref{eq:aux_count}, gives '''+f'$\\mathbb E[|\\mathcal A_i(J)|]\\simeq{a:.2f}$ and $\\mathbb E[A_\\Sigma(J)]\\simeq{m*a:.2f}$. Actual response sizes depend on $J$.\n'
- text+=f"MultiAudit reduces server scalar terms from $3160E$ to $238E$ relative to {NAME['XuTIFS26']}, a {100*(1-238/3160):.1f}\\% reduction. The corresponding expected response reduction under this illustrative encoding is {100*(1-payload('MultiAudit',m,n,s,c,48)/payload('XuTIFS26',m,n,s,c,48)):.1f}\\%. Both protocols retain $\\mathcal O(mcs)$ field aggregation; measured latency also includes authentication, allocation and transcript work. {NAME['ZhangTPDS23']} and {NAME['MiaoSCIS2026']} retain constant-response advantages.\n\n"
- return text
 
 def style_source()->str:
     colors='\n'.join(r'\definecolor{'+s+'}{HTML}{'+COLORS[s]+'}' for s in SCHEMES)
@@ -114,25 +103,96 @@ def communication_figure():
         fill=color if name=='MultiAudit' else color+'!75'
         coords=' '.join(f'({m},{value:.8f})' for m,value in points.items())
         out += [r'\addplot+[draw='+color+'!90!black,fill='+fill+r',line width=0.5pt] coordinates {'+coords+'};',r'\addlegendentry{'+NAME[name]+'}']
-    out += [r'\end{axis}',r'\end{tikzpicture}',r'\caption{Audit-response payload of Merkle-authenticated schemes at $B=10$~MB, $s=80$, and $c=690$. Native 64-byte groups and 32-byte scalars and hashes are used; MultiAudit uses expected CMM size. Framing is excluded. At $m=40$, MultiAudit reduces the expected payload by 71.9\% relative to Xu et al.~\cite{XuTIFS26}.}',r'\label{fig:vi_communication}',r'\end{figure}']
+    out += [r'\end{axis}',r'\end{tikzpicture}',r'\caption{Audit-response payload at $B=10$~MB per file, $s=80$, and $c=690$.}',r'\label{fig:vi_communication}',r'\end{figure}']
     return '\n'.join(out)
+
+
+def merge_deployment_figures(s, mobile_count=40):
+    labels = ['fig:vi_communication', 'fig:onchain_cost', 'fig:mobile_costs']
+    blocks = []
+    for label in labels:
+        a = s.index('\\label{' + label + '}')
+        start = list(re.finditer(r'\\begin\{figure\}', s[:a]))[-1].start()
+        end = s.index('\\end{figure}', a) + len('\\end{figure}')
+        block = s[start:end]
+        plot = block[block.index('\\begin{tikzpicture}'):block.index('\\end{tikzpicture}') + len('\\end{tikzpicture}')]
+        caption = dict(zip(labels, ['Audit response', 'EVM verification', 'iPhone computation']))[label]
+        plot = re.sub(r'width=0\.(?:8|90|98)\\linewidth,height=0\.(?:66|65|76)\\linewidth',
+                      r'width=0.98\\linewidth,height=0.82\\linewidth,label style={font=\\sffamily\\footnotesize}', plot)
+        if label == labels[0]:
+            plot = plot.replace('bar width=8pt', 'bar width=4pt')
+        elif label == labels[1]:
+            plot = plot.replace('bar width=6pt', 'bar width=3pt').replace('bar shift=-8pt', 'bar shift=-4pt').replace('bar shift=8pt', 'bar shift=4pt').replace('xshift=-8pt', 'xshift=-4pt').replace('xshift=8pt', 'xshift=4pt').replace('line width=1pt', 'line width=0.8pt')
+        else:
+            plot = plot.replace('ylabel={Time (ms)},xtick=', r'ylabel={Time (ms)},xlabel={\phantom{Number of files $m$}},xtick=').replace('bar width=10pt', 'bar width=7pt').replace('legend columns=3', 'legend columns=1').replace('at={(0.5,0.98)},anchor=north', 'at={(0.98,0.98)},anchor=north east')
+        if label == labels[1]:
+            lines = plot.splitlines()
+            annotations = [line for line in lines if line.startswith(r'\node[font=\sffamily\tiny')]
+            plot = '\n'.join(line for line in lines if line not in annotations)
+            plot = plot.replace(r'\end{axis}', '\n'.join(annotations) + '\n' + r'\end{axis}')
+            plot = plot.replace('shift=-4pt', 'shift=-5pt').replace('shift=4pt', 'shift=5pt')
+        blocks.append((start, end, plot, caption))
+    out = [r'\begin{figure*}[!t]', r'\centering']
+    for i, ((_, _, plot, caption), label) in enumerate(zip(blocks, labels)):
+        out += [r'\subfloat[' + caption + r'\label{' + label + r'}]{\begin{minipage}[t][1.72in][t]{0.32\textwidth}\vspace{0pt}\centering', plot, r'\end{minipage}}' + (r'\hfill' if i < 2 else '')]
+    out += [r'\caption{Communication, on-chain verification, and mobile computation costs at $B=10$~MB per file, $s=80$, and $c=690$. Panel (c) uses forty files and a logarithmic time axis.}', r'\label{fig:deployment_costs}', r'\end{figure*}']
+    merged = '\n'.join(out).replace('Panel (c) uses forty files', 'Panel (c) uses ' + str(mobile_count) + ' files')
+    for start, end, _, _ in reversed(blocks):
+        s = s[:start] + (merged if start == blocks[0][0] else '') + s[end:]
+    for label, panel in zip(labels, 'abc'):
+        s = s.replace(r'\ref{' + label + '}', r'\ref{fig:deployment_costs}(' + panel + ')')
+    return s
 
 
 def runtime_figure(rows):
     out=[r'\begin{figure*}[!t]',r'\centering',legend_source()+r'\par\smallskip']
     for i,phase in enumerate(['Store','ProofGen','Verify']):
-        caption=phase+(' (s)' if phase=='Store' else ' (ms)')
+        caption='Store (s)' if phase=='Store' else phase+' (ms)'
         out += [r'\subfloat['+caption+r']{\begin{minipage}{0.33\textwidth}\centering',plot_source(rows,phase),r'\end{minipage}}']
         if i<2:out.append(r'\hfill')
-    out += [r'\caption{Runtime versus file count for $B=10$~MB per file, $s=80$, and $c=690$. Store is measured once in seconds on a logarithmic axis. Online bars show median milliseconds and interquartile ranges over 30 fresh audits.}',r'\label{fig:vi_runtime_sweeps}',r'\end{figure*}']
+    out += [r'\caption{Runtime on the cloud platform versus file count for $B=10$~MB per file, $s=80$, and $c=690$. Store is measured once in seconds on a logarithmic axis. Online bars show median milliseconds and interquartile ranges over 30 fresh audits.}',r'\label{fig:vi_runtime_sweeps}',r'\end{figure*}']
     return '\n'.join(out)
 
 
+def cloud_setup():
+    return r'''Let $B$ denote the nominal size of each file. We fix $B=10$~MB (MB $=10^6$ bytes), corresponding to 10,001,920 encoded bytes per file after rounding to complete chunks. We set $s=80$, $c=690$, and $n=3907$, with 64-byte $\GG_1$ elements and 32-byte scalars and hashes, and vary $m\in\{10,20,30,40\}$. Baseline normalization follows Tables~\ref{tab:computation} and~\ref{tab:communication}. We emulate the cloud on a PC with an Apple M4 (10 logical cores, 16~GiB RAM, macOS~26.5.2) running native ARM64 Go~1.25.4. All schemes use BN254 through the Geth \texttt{bn256/cloudflare} backend, with shared MSM, field, and storage kernels. The library name BN256 refers here to the same BN254 curve used by the EVM helpers. MKPDP uses two keywords per file and $ns=312{,}560$ single-sector blocks per file, and queries all files. Online timings report medians over 30 fresh audits following warmup. Cloud timings exclude setup, input and challenge generation, encoding, and transfer. Store time includes tagging and authentication-state construction on the same platform and excludes input encoding, serialization, and upload. Verify measures optional off-chain public checking.
+'''
+
+
+def cloud_analysis(base):
+    pgx = base['XuTIFS26']['ProofGen'] / base['MultiAudit']['ProofGen']
+    pgz = base['ZhangTPDS23']['ProofGen'] / base['MultiAudit']['ProofGen']
+    vz = base['ZhangTPDS23']['Verify'] / base['MultiAudit']['Verify']
+    text = r'''\paragraph{Storage and scaling}
+Fig.~\ref{fig:vi_runtime_sweeps}(a) shows that Store time grows with the file count. MultiAudit remains close to MPA~\cite{XuTIFS26} and Yu et al.~\cite{YuTC25} because all three generate a commitment tag for every chunk and build complete per-file authentication trees. CMMs compact the sampled paths during audits rather than reduce initial tagging. This matches the design goal of reducing repeated online work while keeping owner Store costs comparable. The larger costs of BPCS~\cite{ZhangTPDS23} and MKPDP~\cite{MiaoSCIS2026} reflect their signed-tag and searchable-data constructions, respectively, rather than equivalent Store workloads.
+
+\paragraph{Proof generation}
+Fig.~\ref{fig:vi_runtime_sweeps}(b) shows the benefit of moving aggregation before commitment. MultiAudit commits to two combined quotient polynomials, whereas MPA~\cite{XuTIFS26} commits to one quotient per file. Returning CMM-authenticated tags also avoids the signed-tag aggregation performed by BPCS~\cite{ZhangTPDS23}. '''
+    text += f"At forty files, these design choices yield proof-generation speedups of {pgx:.2f}$\\times$ over MPA and {pgz:.2f}$\\times$ over BPCS. "
+    text += r'''Latency still grows with the batch because sampled data must be combined over the field and authentication paths must be traversed. The reduction in group work therefore does not imply constant proof-generation time. Yu et al.~\cite{YuTC25} retain faster proof generation by returning quotient coefficients, with the corresponding response and verification trade-offs shown in Fig.~\ref{fig:vi_communication} and Fig.~\ref{fig:vi_runtime_sweeps}(c).
+
+\paragraph{Verification}
+Fig.~\ref{fig:vi_runtime_sweeps}(c) shows that batching keeps verification close to MPA~\cite{XuTIFS26} while separating MultiAudit from the heavier checks of BPCS~\cite{ZhangTPDS23}, MKPDP~\cite{MiaoSCIS2026}, and the repeated per-file checks of Yu et al.~\cite{YuTC25}. The two witnesses permit one data MSM and two pairing terms, but the sampled tags still contribute work for every file. '''
+    text += f"At forty files, verification is {vz:.2f}$\\times$ faster than BPCS. "
+    text += r'''This gain reflects the complete verification equations, including tag authentication, rather than the opening normalization alone. The smaller gap to MPA is expected because both retain the leading sampled-tag MSM. Compact authentication reduces hashing overhead without eliminating that shared group work.
+
+'''
+    return text
+
+
+def communication_analysis(saving):
+    return (r'''\paragraph{Communication}
+Fig.~\ref{fig:vi_communication} shows a substantially lower response-growth rate for MultiAudit than for the independent-path baselines. CMMs transmit overlapping authentication hashes once, while two aggregate witnesses replace the per-file witnesses of MPA~\cite{XuTIFS26}. Sampled tags and per-file evaluations remain in the response, so its size still grows with the batch. '''
+            + f"At forty files, the measured mean encoded response is {saving:.1f}\\% smaller than MPA's native payload. "
+            + r'''This saving mainly reflects compact authentication. The figure excludes framing for every scheme and uses expected CMM sizes, whereas the measured comparison includes MultiAudit framing and excludes baseline framing. BPCS~\cite{ZhangTPDS23} and MKPDP~\cite{MiaoSCIS2026} retain constant-size cryptographic responses, so the plotted communication advantage concerns Merkle-authenticated baselines.
+''')
+
+
 def sampling_analysis(source):
-    start=source.index(r'\begin{lemma}[Sampling Coverage]')
-    label=source.index(r'\label{rem:parameter_selection}',start)
-    end=source.index(r'\end{remark}',label)+len(r'\end{remark}')
-    return source[start:end]
+    label = r'\label{subsec:sampling_coverage}'
+    start = source.index(label) + len(label)
+    end = source.index(r'\subsection{', start)
+    return source[start:end].strip()
 
 
 def main():
@@ -148,58 +208,39 @@ def main():
     xp=payload('XuTIFS26',40,3907,80,690);saving=100*(1-wire/xp)
     pg_ratio=base['ZhangTPDS23']['ProofGen']/f['ProofGen'];vr_ratio=base['ZhangTPDS23']['Verify']/f['Verify']
     xratio=base['XuTIFS26']['ProofGen']/f['ProofGen']
-    method=r'''\subsection{Experimental Setup}
-We fix nominal 10~MB files (10,001,920 encoded bytes), $s=80$, $c=690$, and $n=3907$ for the multi-sector layout, with 64-byte $\GG_1$ elements and 32-byte scalars/hashes. Baseline normalization follows Tables~\ref{tab:computation} and~\ref{tab:communication}.
-
-PC tests use Go~1.25.4 (\texttt{darwin/arm64}) on an Apple M4 (10 logical cores, 16~GiB RAM, macOS~26.5.2). All schemes share BN256 (go-ethereum~v1.17.2), Pippenger MSM, and field/storage kernels. We vary $m\in\{10,20,30,40\}$; '''+NAME['MiaoSCIS2026']+r''' uses two keywords per file and queries all files. All configurations use complete stored fixtures. Online calls use one worker and a locked OS thread; 30 fresh audits follow at least three warmups and five seconds of warmup. We report medians/interquartile ranges without sample removal. Store is measured once (up to four file workers for the searchable scheme, sequential otherwise). Setup, synthetic-input and challenge generation, response encoding, and transfer are excluded. GC is requested outside online timers; collections during calls remain included.
-'''
-    results=r'''\paragraph{Storage and scaling}
-Fig.~\ref{fig:vi_runtime_sweeps}(a) shows approximately linear Store growth with file count. MultiAudit stays close to '''+NAME['XuTIFS26']+' and '+NAME['YuTC25']+r''', consistent with their common $mn\CompExp$ tag-generation term in Table~\ref{tab:computation}. Store still generates all chunk tags and complete per-file authentication trees. CMMs compact the sampled authentication paths during ProofGen, while coefficient aggregation reduces the opening-commitment work in that phase. Consequently, these improvements primarily benefit online auditing.
-
-\paragraph{Proof generation}
-Table~\ref{tab:computation} identifies the benefit of aggregating quotient coefficients before commitment: MultiAudit uses $[2(s-1)+2m]\CompExp$, replacing the $m(s-1)\CompExp$ witness term of '''+NAME['XuTIFS26']+r'''. Fig.~\ref{fig:vi_runtime_sweeps}(b) confirms lower proof-generation latency as the batch grows. '''+f"At $m=40$, the speedups are {xratio:.2f}$\\times$ over {NAME['XuTIFS26']} and {pg_ratio:.2f}$\\times$ over {NAME['ZhangTPDS23']}. "+r'''The latency gain is smaller than the scalar-term reduction because challenged-data aggregation remains $\mathcal O(mcs)$ and complete calls include field, authentication, and memory work. '''+NAME['YuTC25']+r''' retains faster ProofGen by returning quotient coefficients; Table~\ref{tab:communication} makes the corresponding response trade-off explicit.
-
-\paragraph{Verification}
-Fig.~\ref{fig:vi_runtime_sweeps}(c) is consistent with the verification terms in Table~\ref{tab:computation}: MultiAudit combines the openings into two pairing terms and one data MSM, while '''+NAME['YuTC25']+r''' repeats per-file checks and '''+NAME['ZhangTPDS23']+' and '+NAME['MiaoSCIS2026']+r''' have larger tag-related scalar terms. '''+f"The verification speedup over {NAME['ZhangTPDS23']} reaches {vr_ratio:.2f}$\\times$. "+r'''The latency of '''+NAME['XuTIFS26']+r''' remains close to MultiAudit's: both retain the leading $mc$ tag term, while MultiAudit additionally checks masks and binds its transcript. Group counts explain the trends but are not proportional latency predictions under MSM acceleration.
-
-'''
-    comm=r'''\paragraph{Communication}
-Table~\ref{tab:communication} explains the reduction in Fig.~\ref{fig:vi_communication}: CMMs replace the $mcL$ independent-path hashes with $A_\Sigma(J)$ auxiliary hashes, and the opening component uses two witnesses. The full response still includes sampled tags and per-file masks. '''+f"At $m=40$, the mean encoded MultiAudit response is {saving:.1f}\\% smaller than the native payload accounting of {NAME['XuTIFS26']}. "+r'''This comparison includes MultiAudit framing and excludes baseline framing; the plotted estimates exclude framing for every scheme and use expected CMM sizes. '''+NAME['ZhangTPDS23']+' and '+NAME['MiaoSCIS2026']+r''' retain constant-size cryptographic responses, so MultiAudit's communication advantage concerns the Merkle-authenticated baselines rather than every comparison scheme.
-'''
-    sampling_heading=r'\subsection{Sampling Coverage and Parameter Selection}'+'\n'+r'\label{subsec:sampling_coverage}'+'\n'+r'The following calculation motivates the common challenge size.'+'\n\n'
+    method = cloud_setup()
+    results = cloud_analysis(base).replace('MultiAudit', r'\MultiAudit{}')
+    comm = communication_analysis(saving).replace('MultiAudit', r'\MultiAudit{}')
+    sampling_heading=r'\subsection{Sampling Coverage and Parameter Selection}'+'\n'+r'\label{subsec:sampling_coverage}'+'\n'+'\n'
     phone_method=mobile_setup()
     phone_results=mobile_results(directory/'mobile')
     chain_method=onchain_setup()
     onchain=onchain_results(directory/'onchain')
     evaluation=('% BEGIN GENERATED EVALUATION\n'+r'\section{Evaluation}'+'\n'+r'\label{sec:evaluation}'+'\n'
                 +method+'\n'+chain_method+'\n'+phone_method+'\n'+sampling_heading+sampling+'\n\n'
-                +r'\subsection{PC Results}'+'\n'+r'\label{subsec:pc_results}'+'\n'+runtime_figure(rows)+'\n'+results+communication_figure()+'\n'+comm+'\n'
+                +r'\subsection{Cloud Costs}'+'\n'+r'\label{subsec:cloud_costs}'+'\n'+runtime_figure(rows)+'\n'+results+communication_figure()+'\n'+comm+'\n'
                 +r'\subsection{On-Chain Costs}'+'\n'+r'\label{subsec:onchain_costs}'+'\n'+onchain+'\n'
-                +r'\subsection{iPhone Costs}'+'\n'+r'\label{subsec:iphone_costs}'+'\n'+phone_results+'\n% END GENERATED EVALUATION')
+                +r'\subsection{Mobile User Costs}'+'\n'+r'\label{subsec:iphone_costs}'+'\n'+phone_results+'\n% END GENERATED EVALUATION')
+    evaluation=merge_deployment_figures(format_algorithm_names(evaluation), load_mobile(directory/'mobile')['MultiAudit']['m'])
     a=s.index('% BEGIN GENERATED EVALUATION')
     marker=s.find('% END GENERATED EVALUATION',a)
     b=marker+len('% END GENERATED EVALUATION') if marker>=0 else s.index(r'\section{Conclusion}',a)
     s=s[:a]+evaluation+'\n\n'+s[b:]
-    a=s.index(r'\paragraph{Illustrative encoding-normalized comparison.}');b=s.index('% BEGIN GENERATED EVALUATION',a);s=s[:a]+analytical_example()+s[b:]
-    a=s.index(r'\begin{abstract}')+len(r'\begin{abstract}');b=s.index(r'\end{abstract}',a)
-    abstract=s[a:b].split(' For $(m,B,s,c)=')[0].rstrip()
-    abstract+=f" For $(m,B,s,c)=(40,10\\,\\mathrm{{MB}},80,690)$, MultiAudit achieves measured proof-generation and verification speedups of {pg_ratio:.2f}$\\times$ and {vr_ratio:.2f}$\\times$ relative to {NAME['ZhangTPDS23']}; its mean encoded response is {saving:.1f}\\% smaller than the native payload accounting of {NAME['XuTIFS26']}.\n"
-    abstract=abstract.rstrip()+mobile_abstract(directory/'mobile')+'\n'
-    s=s[:a]+abstract+s[b:]
+    # The abstract is author-written and is preserved when experiments refresh.
     a=s.index(r'\label{fig:system model flowchar}');start=list(re.finditer(r'\\begin\{figure\*?\}',s[:a]))[-1].start();end=a+re.search(r'\\end\{figure\*?\}',s[a:]).end();figure1=s[start:end]
     assert hashlib.sha256(figure1.encode()).hexdigest()==json.loads((directory/'document.json').read_text())['figure1_sha256']
     s=s[:start]+'FIGUREONEPLACEHOLDER'+s[end:]
-    s='\n'.join(line for line in s.splitlines() if not line.lstrip().startswith('%') or line.startswith(('% BEGIN GENERATED','% END GENERATED')))
     s=re.sub(r'\n{3,}','\n\n',s).replace('FIGUREONEPLACEHOLDER',figure1)
     assert r'\input{' not in s and r'\includegraphics' not in s
     body=s.split(r'\begin{thebibliography}',1)[0]
     for mention in re.finditer(r'\bet(?:\s|~)+al\.',body):
-        assert re.match(r'\s*~?\\cite(?:\[[^]]*\])?\{[^}]+\}',body[mention.end():])
+        # A named construction can intervene, e.g. "Xu et al.'s MPA~\cite{...}".
+        assert re.match(r"(?:'s)?[^.\n]{0,100}?\\cite(?:\[[^]]*\])?\{[^}]+\}",body[mention.end():])
     labels=re.findall(r'\\label\{([^}]+)\}',s);assert len(labels)==len(set(labels))
-    assert evaluation.count(r'\subfloat[')==3 and evaluation.count(r'\begin{figure*}')==1 and evaluation.count(r'\begin{figure}')==1
+    assert evaluation.count(r'\subfloat[')==6 and evaluation.count(r'\begin{figure*}')==2 and evaluation.count(r'\begin{figure}')==0
     source.write_text(s+'\n')
     onchain_rows,onchain_meta=load_onchain(directory/'onchain')
-    report={'scheme_name':'MultiAudit','measurement_key':'MultiAudit','fixtures':20,'online_audits':600,'response_measurements':30,'summary_rows':60,'baseline_ms':base,'mean_response_bytes':wire,'response_reduction_vs_xu_percent':saving,'figure_panels':['Store','ProofGen','Verify','Audit response'],'communication_payload_MB':communication_payloads(),'evaluation_words':len(re.findall(r'\b\w+\b',method+phone_method+chain_method+sampling+results+phone_results+comm+onchain)),'evaluation_structure':['Experimental Setup','Sampling Coverage and Parameter Selection','PC Results','On-Chain Costs','iPhone Costs'],'mobile_comparison':load_mobile(directory/'mobile'),'onchain_comparison':{'measurement_source':onchain_meta['measurement_source'],'m':1,'s':80,'B_MB':10,'c':690,'audits_per_scheme':onchain_meta['audits_per_scheme'],'results':onchain_rows}}
+    report={'scheme_name':'MultiAudit','measurement_key':'MultiAudit','fixtures':20,'online_audits':600,'response_measurements':30,'summary_rows':60,'baseline_ms':base,'mean_response_bytes':wire,'response_reduction_vs_xu_percent':saving,'figure_panels':['Store','ProofGen','Verify','Audit response','Total gas','Calldata gas','Mobile Store','Mobile Verify'],'communication_payload_MB':communication_payloads(),'evaluation_words':len(re.findall(r'\b\w+\b',method+phone_method+chain_method+sampling+results+phone_results+comm+onchain)),'evaluation_structure':['Experimental Setup','Sampling Coverage and Parameter Selection','Cloud Costs','On-Chain Costs','Mobile User Costs'],'mobile_comparison':load_mobile(directory/'mobile'),'onchain_comparison':{'measurement_source':onchain_meta['measurement_source'],'m_scan':onchain_meta['m_scan'],'s':80,'B_MB':10,'c':690,'audits_per_scheme_per_m':onchain_meta['audits_per_scheme_per_m'],'results':onchain_rows}}
     (directory/'publication.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report,indent=2))
 

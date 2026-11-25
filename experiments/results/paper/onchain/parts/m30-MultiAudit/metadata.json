@@ -1,0 +1,109 @@
+{
+  "measurement_source": "local_evm_batch_transaction_receipts",
+  "complete": true,
+  "B_MB": 10,
+  "n": 3907,
+  "s": 80,
+  "c": 690,
+  "m_scan": [
+    30
+  ],
+  "audits_per_scheme_per_m": 5,
+  "node_arch": "arm64",
+  "node_version": "v16.15.1",
+  "evm": "evm version 1.17.10-stable",
+  "hardfork": "shanghai",
+  "solidity": "solc, the solidity compiler commandline interface\nVersion: 0.8.25+commit.b61c2a91.Darwin.appleclang",
+  "compiler_options": [
+    "--optimize",
+    "--via-ir",
+    "--evm-version",
+    "shanghai"
+  ],
+  "block_gas_limit": 5000000000,
+  "transaction_gas_limit": 1000000000,
+  "limit_scope": "raised simulator limits for cost measurement; not a claim of target-chain single-transaction feasibility",
+  "execution_gas": "receipt minus exact EIP-2028 intrinsic gas",
+  "registration_and_deployment": "excluded; current ordered roots/IDs and SRS fixed at deployment; owner registers the exact challenge digest before each transaction",
+  "native_batch_semantics": "Xu shared-point global opening check; Yu m independent native file checks inside one transaction; MultiAudit one distinct-point two-witness check",
+  "challenge_encoding": "32-byte indices; Xu one shared expanded challenge, Yu independent per-file expanded challenges, MultiAudit shared indices and per-file coefficients/points",
+  "optimization_version": "memory_reuse_v2_unmasked",
+  "common_optimizations": "all schemes use shared in-place ECADD/ECMUL, reusable point buffers, temporary challenge-hash scratch and SHA-256 helpers; Xu moves G2 multiplication to G1; Yu coefficient-combines its shifted SRS relation; MultiAudit uses reusable canonical-transcript scratch and CMM arrays",
+  "native_fixtures_verified": true,
+  "public_verifier_account": true,
+  "negative_checks": [
+    {
+      "scheme": "MultiAudit",
+      "m": 30,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0xc3cd9a8ad20c42fbfed266c28eb4d72fdbc4dff14dbb7d7e0137145932b8a67c"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 30,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0x4f608d3042b5a03e72b33f1e9e410c7895fa3851dcf531b701d57c79dea659b0"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 30,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0xad205d2020b43ed062c880b905a91bc63b055659809aac8ac3047d603bbb9358"
+    }
+  ],
+  "fixtures": [
+    {
+      "scheme": "MultiAudit",
+      "m": 30,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "743bb85323ca7ed395af0377397188680f60ba33419cae3fb18d1480cf76f077",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "2e617e0fc6e55102d89743c78690fa78cb64ff6f4421489c5004537f5fcc8cf0",
+      "signed_transaction_body_sha256": "18cefc4ef8858c63040a082b61b6d7c1a6d0d5014418457e5234974955692a8c"
+    }
+  ],
+  "source_sha256": {
+    "experiments/onchain/batch/AuditBatchVerifier.sol": "25fd46a4501535e3acf638348cbcb4b0c956bfa18839486c21b18e11c55636de",
+    "experiments/onchain/batch/fixtures.go": "db588108d2c023771bb09645c337815b8dd8875fccbe5057e528e7f61131bae3",
+    "experiments/onchain/batch/run.cjs": "be24049cb96be8e53dc972008d1cdfbcf61ab04350b78bfe37adcde669c44ee8",
+    "schemes/multiaudit/client_store.go": "87a836942489286013ce4db7013f8853f453b4d818cb987fc14d69f2f9c54b37",
+    "schemes/multiaudit/encoding.go": "34729524f487c810306e82af7f1861b81ee73ed0ad75936deb46f3e0495d4582",
+    "schemes/multiaudit/files.go": "9c949b40c538af3def700513f0a8341a71fc134fbc767ec31eb60e13edb072a5",
+    "schemes/multiaudit/multiproof.go": "99bd59061758aa4f6fd72bfd94b9097051c9c8e52ad72257417af1acf63d48a6",
+    "schemes/multiaudit/protocol.go": "5cac936c936303aaac819b8da29e4788b5bcaa37a55688a1f67cfbd8608b3f29",
+    "schemes/multiaudit/transcript.go": "a90a6cd94d4e1c6a9a68dd5a23e98a6d6a2d471f87f7326decab7e7df67c351c",
+    "schemes/xutifs26/client_setup.go": "f9f140ec75df3c75b334569e7f993307a21c45f34307f3e0637500fa38b14b23",
+    "schemes/xutifs26/protocol.go": "280d046b53dff2edebda4e0e5759354558d52834d04b17cff5e5ccff0b6f0ddc",
+    "schemes/yutc25/client_setup.go": "c0d5b102d394c4a4e2bfec29879f5b759cc132be690bc1e7a75de87931166a30",
+    "schemes/yutc25/protocol.go": "f12cedc83b663b9c4a762314f8a4a578ccd822ba6c5c9c7658aa36bf2846d235",
+    "schemes/benchcore/arithmetic.go": "3f2c9bf844bbaa3d8e2615eefb40a1c29a0987bbeecec2dd7fc0f3aff27ec4d5",
+    "schemes/benchcore/benchcore.go": "938a9142a54415dc8764430b173631d2ac5eb7e5b03f6ba8f5a791be2fb5ccdb",
+    "schemes/benchcore/msm.go": "4bf31cbdd2967f1906789381ccc2f56f3dcac6b7b8d0849f655d42d483fb6dc6",
+    "schemes/benchcore/protocol_utils.go": "8b2525c8be4b9bb5809c602eec65954d0fccf51df0845c58e06cd707a83e9be4",
+    "schemes/benchcore/storage.go": "f3e768d1e627140fcc9a207f83d0495b30a4576705d34c299d840eaf9b8710c2",
+    "go.mod": "3f3181ed23afb5b04942cb760fff4ee4b54249cd4d61f692d55653c97d0ad356",
+    "go.sum": "3bcc1ee96db0eba1a1ee88cc72fb489584ab974261faa4b75bff33f7b170986d",
+    "experiments/onchain/batch/run_transition.cjs": "46c66ab9bef029b30e0e3fcd78b5a561aec32a787969fd836774ecb205a99c78"
+  },
+  "bytecode_sha256": "18948a38befafc05ee197420c42d2935d366739a4cf8e686f29614cdc146a4cc",
+  "evm_backend": "Geth offline signed-transaction state transition",
+  "engine_binary_sha256": "89240ff3a51ca44e08d28fa4001c55ea09d25d80bb19fda3a45a06bd816a4fb7",
+  "engine_arguments": [
+    "t8n",
+    "--state.fork",
+    "Shanghai",
+    "--state.chainid",
+    "20261124",
+    "--state.reward",
+    "-1"
+  ],
+  "negative_transaction_gas_limit": 400000000,
+  "block_context": "one independent Shanghai block per fixture; constructor and owner challenge registrations execute before verification; their gas is excluded from plotted rows",
+  "temporary_input_directory": "/private/tmp/multiaudit-t8n-rSf0Zo"
+}

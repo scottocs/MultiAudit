@@ -1,0 +1,18 @@
+{
+  "application" : "MultiAudit",
+  "baseURL" : "http:\/\/192.168.1.127:8788",
+  "failureReason" : "NSURLErrorDomain [-1005]: The network connection was lost.; [\"NSErrorFailingURLKey\": http:\/\/192.168.1.127:8788\/owner\/file, \"_NSURLErrorFailingURLSessionTaskErrorKey\": LocalDataTask <C972987E-8050-4B93-AB01-98A4A6F1BFF5>.<13>, \"_kCFStreamErrorCodeKey\": -4, \"NSLocalizedDescription\": The network connection was lost., \"_kCFStreamErrorDomainKey\": 4, \"NSUnderlyingError\": Error Domain=kCFErrorDomainCFNetwork Code=-1005 \"(null)\" UserInfo={NSErrorPeerAddressKey=<CFData 0x1077e6170 [0x207accd00]>{length = 16, capacity = 16, bytes = 0x10022254c0a8017f0000000000000000}, _kCFStreamErrorCodeKey=-4, _kCFStreamErrorDomainKey=4}, \"_NSURLErrorRelatedURLSessionTaskErrorKey\": <__NSSingleObjectArrayI 0x104199400>(\nLocalDataTask <C972987E-8050-4B93-AB01-98A4A6F1BFF5>.<13>\n)\n, \"NSErrorFailingURLStringKey\": http:\/\/192.168.1.127:8788\/owner\/file]",
+  "model" : "iPhone14,5",
+  "notes" : "Phone executes owner Setup and sequential Store; cloud imports sectors\/tags and executes native ProofGen without the owner trapdoor. Phone Verify is optional. Synthetic benchmark files contain 3907*80 canonical 32-byte sectors; imported files use reversible 31-byte sectors with padding. Peak footprint sampled every 5ms. End-to-end audit time includes challenge\/upload, download, decoding and optional verification. No battery-energy estimate.",
+  "operatingSystem" : "Version 26.6.2 (Build 23G90)",
+  "platform" : "physical iPhone",
+  "records" : [
+
+  ],
+  "samplesPerConfiguration" : 30,
+  "stores" : [
+
+  ],
+  "timestamp" : "2026-11-25T07:43:46Z",
+  "warmupsPerConfiguration" : 3
+}

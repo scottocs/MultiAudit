@@ -3,7 +3,6 @@ package multiaudit
 import (
 	"bytes"
 	"io"
-	"math/big"
 	"testing"
 
 	bn256 "github.com/ethereum/go-ethereum/crypto/bn256/cloudflare"
@@ -110,9 +109,9 @@ func TestTamperedProofFieldsAreRejected(t *testing.T) {
 	}
 
 	tamperedY := cloneProof(proof)
-	tamperedY.FileProofs[0].YTilde = benchcore.Add(tamperedY.FileProofs[0].YTilde, benchcore.One())
+	tamperedY.FileProofs[0].Value = benchcore.Add(tamperedY.FileProofs[0].Value, benchcore.One())
 	if protocol.Verify(stored, chal, tamperedY) {
-		t.Fatal("Verify accepted tampered masked evaluation")
+		t.Fatal("Verify accepted tampered evaluation")
 	}
 
 	tamperedCQ := cloneProof(proof)
@@ -158,7 +157,7 @@ func TestMerkleLeafBindsFileAndPosition(t *testing.T) {
 }
 
 func cloneProof(proof *AuditProof) *AuditProof {
-	out := &AuditProof{FileProofs: make([]FileProof, len(proof.FileProofs)), PiR: make([]SchnorrProof, len(proof.PiR)), CQ: cloneG1(proof.CQ), CW: cloneG1(proof.CW)}
+	out := &AuditProof{FileProofs: make([]FileProof, len(proof.FileProofs)), CQ: cloneG1(proof.CQ), CW: cloneG1(proof.CW)}
 	for i, fp := range proof.FileProofs {
 		tags := make([]*bn256.G1, len(fp.Tags))
 		for j, tag := range fp.Tags {
@@ -168,18 +167,14 @@ func cloneProof(proof *AuditProof) *AuditProof {
 		for j, h := range fp.Auxiliary {
 			aux[j] = benchcore.CloneBytes(h)
 		}
-		out.FileProofs[i] = FileProof{Tags: tags, Auxiliary: aux, YTilde: benchcore.Normalize(fp.YTilde), R: cloneG1(fp.R)}
-	}
-	for i, pi := range proof.PiR {
-		out.PiR[i] = SchnorrProof{A: cloneG1(pi.A), Z: benchcore.Normalize(pi.Z)}
+		out.FileProofs[i] = FileProof{Tags: tags, Auxiliary: aux, Value: benchcore.Normalize(fp.Value)}
 	}
 	return out
 }
 
-// Exercise the final pairing with authenticated tags and freshly signed mask
-// proofs. Rebuild both witnesses after each statement change, so rejection
-// cannot be attributed merely to stale Fiat-Shamir mask challenges.
-func TestSHPLONKRejectsFalseEvaluationWithValidMaskProofs(t *testing.T) {
+// Rebuild the opening witnesses after changing the statements, so opposite
+// errors are tested against the pairing rather than only a stale transcript.
+func TestSHPLONKRejectsFalseEvaluationsWithRebuiltWitnesses(t *testing.T) {
 	p := testProtocol(t, 701)
 	data, _ := p.RandomDataset()
 	stored, err := p.Store(data)
@@ -191,37 +186,33 @@ func TestSHPLONKRejectsFalseEvaluationWithValidMaskProofs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	masks := make([]*big.Int, p.Config.NumFiles)
-	qs := make([]benchcore.Poly, len(masks))
-	for i := range masks {
-		masks[i] = benchcore.Scalar("test/mask", i)
-		f, _ := p.aggregatePolynomial(stored.Files[i], chal, i)
-		y := f.Eval(chal.EvaluationPoints[i])
-		qs[i], _ = f.SubConstant(y).DivLinear(chal.EvaluationPoints[i])
-		proof.FileProofs[i].R = benchcore.G1Base(masks[i])
-		proof.FileProofs[i].YTilde = benchcore.Add(y, masks[i])
-	}
 	rebuild := func() {
+		qs := make([]benchcore.Poly, p.Config.NumFiles)
+		for i := range qs {
+			f, err := p.aggregatePolynomial(stored.Files[i], chal, i)
+			if err != nil {
+				t.Fatal(err)
+			}
+			qs[i], _ = f.SubConstant(proof.FileProofs[i].Value).DivLinear(chal.EvaluationPoints[i])
+		}
 		T := p.baseTranscript(stored, chal, proof.FileProofs)
 		p.commitQuotients(T, chal, proof, qs)
-		proof.PiR, err = p.schnorrMaskProofs(T, proof, masks)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !p.verifySchnorrMaskProofs(T, proof) {
-			t.Fatal("invalid test mask proofs")
-		}
 	}
 	rebuild()
-	if !p.Verify(stored, chal, proof) {
+	if !p.Verify(stored.Registry(), chal, proof) {
 		t.Fatal("honest rebuilt proof rejected")
 	}
-	proof.FileProofs[0].YTilde = benchcore.Add(proof.FileProofs[0].YTilde, benchcore.One())
-	// Opposite errors must not cancel across distinct file evaluation points.
-	proof.FileProofs[1].YTilde = benchcore.Sub(proof.FileProofs[1].YTilde, benchcore.One())
+	proof.FileProofs[0].Value = benchcore.Add(proof.FileProofs[0].Value, benchcore.One())
+	proof.FileProofs[1].Value = benchcore.Sub(proof.FileProofs[1].Value, benchcore.One())
 	rebuild()
-	if p.Verify(stored, chal, proof) {
-		t.Fatal("false claims accepted with valid mask proofs")
+	if p.Verify(stored.Registry(), chal, proof) {
+		t.Fatal("opposite false evaluations canceled")
+	}
+	// Identity witnesses cannot satisfy the false opening statements.
+	proof.CQ = benchcore.G1Base(benchcore.Zero())
+	proof.CW = benchcore.G1Base(benchcore.Zero())
+	if p.Verify(stored.Registry(), chal, proof) {
+		t.Fatal("identity witnesses accepted false evaluations")
 	}
 }
 
@@ -261,7 +252,7 @@ func TestProtocolBoundaryAndEncoding(t *testing.T) {
 		for _, fp := range proof.FileProofs {
 			aux += len(fp.Auxiliary)
 		}
-		want := 12 + 4*cfg.NumFiles + (cfg.NumFiles*cfg.ChallengedChunks+2*cfg.NumFiles+2)*64 + 2*cfg.NumFiles*32 + aux*32
+		want := 12 + 4*cfg.NumFiles + (cfg.NumFiles*cfg.ChallengedChunks+2)*64 + cfg.NumFiles*32 + aux*32
 		if len(raw) != want {
 			t.Fatalf("response has %d bytes, want %d", len(raw), want)
 		}
@@ -289,12 +280,10 @@ func TestTranscriptAndMalformedProofRejection(t *testing.T) {
 	for name, mutate := range map[string]func(*AuditProof){
 		"CW":          func(q *AuditProof) { q.CW = benchcore.G1Add(q.CW, benchcore.G1Base(benchcore.One())) },
 		"nilCQ":       func(q *AuditProof) { q.CQ = nil },
-		"nilR":        func(q *AuditProof) { q.FileProofs[0].R = nil },
-		"nilY":        func(q *AuditProof) { q.FileProofs[0].YTilde = nil },
-		"scalarAlias": func(q *AuditProof) { q.PiR[0].Z.Add(q.PiR[0].Z, benchcore.Order) },
+		"nilY":        func(q *AuditProof) { q.FileProofs[0].Value = nil },
+		"scalarAlias": func(q *AuditProof) { q.FileProofs[0].Value.Add(q.FileProofs[0].Value, benchcore.Order) },
 		"tag":         func(q *AuditProof) { q.FileProofs[0].Tags[0] = q.FileProofs[1].Tags[0] },
 		"aux":         func(q *AuditProof) { q.FileProofs[0].Auxiliary = append(q.FileProofs[0].Auxiliary, make([]byte, 32)) },
-		"A":           func(q *AuditProof) { q.PiR[0].A = benchcore.G1Base(benchcore.One()) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			q := cloneProof(proof)

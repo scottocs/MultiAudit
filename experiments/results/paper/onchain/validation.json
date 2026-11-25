@@ -1,0 +1,9 @@
+{
+  "complete": true,
+  "formal_transactions": 60,
+  "configurations": 12,
+  "negative_checks": 67,
+  "gas_csv_sha256": "e1eee3acf24a4e5abb64469030447f2700f182064680c74ab41127f138a6fb4b",
+  "all_receipts_and_intrinsic_gas_valid": true,
+  "archived_sources_valid": true
+}

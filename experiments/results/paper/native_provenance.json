@@ -1,0 +1,27 @@
+{
+  "protocol": "multiaudit/compact-merkle-shplonk/v2-unmasked",
+  "source_sha256": {
+    "go.mod": "3f3181ed23afb5b04942cb760fff4ee4b54249cd4d61f692d55653c97d0ad356",
+    "go.sum": "3bcc1ee96db0eba1a1ee88cc72fb489584ab974261faa4b75bff33f7b170986d",
+    "experiments/protocolbench/main.go": "607141d369a710732dac4b66b0cecd22739078403ca601d3da09f3d6314e9858",
+    "schemes/benchcore/arithmetic.go": "3f2c9bf844bbaa3d8e2615eefb40a1c29a0987bbeecec2dd7fc0f3aff27ec4d5",
+    "schemes/benchcore/benchcore.go": "938a9142a54415dc8764430b173631d2ac5eb7e5b03f6ba8f5a791be2fb5ccdb",
+    "schemes/benchcore/msm.go": "4bf31cbdd2967f1906789381ccc2f56f3dcac6b7b8d0849f655d42d483fb6dc6",
+    "schemes/benchcore/protocol_utils.go": "8b2525c8be4b9bb5809c602eec65954d0fccf51df0845c58e06cd707a83e9be4",
+    "schemes/benchcore/storage.go": "f3e768d1e627140fcc9a207f83d0495b30a4576705d34c299d840eaf9b8710c2",
+    "schemes/miaoscis2026/protocol.go": "1a826fb8bf57294439126b99f817ab14e8065756058f76a06672b820f1b6db28",
+    "schemes/multiaudit/client_store.go": "87a836942489286013ce4db7013f8853f453b4d818cb987fc14d69f2f9c54b37",
+    "schemes/multiaudit/encoding.go": "34729524f487c810306e82af7f1861b81ee73ed0ad75936deb46f3e0495d4582",
+    "schemes/multiaudit/files.go": "9c949b40c538af3def700513f0a8341a71fc134fbc767ec31eb60e13edb072a5",
+    "schemes/multiaudit/multiproof.go": "99bd59061758aa4f6fd72bfd94b9097051c9c8e52ad72257417af1acf63d48a6",
+    "schemes/multiaudit/protocol.go": "5cac936c936303aaac819b8da29e4788b5bcaa37a55688a1f67cfbd8608b3f29",
+    "schemes/multiaudit/transcript.go": "a90a6cd94d4e1c6a9a68dd5a23e98a6d6a2d471f87f7326decab7e7df67c351c",
+    "schemes/xutifs26/client_setup.go": "f9f140ec75df3c75b334569e7f993307a21c45f34307f3e0637500fa38b14b23",
+    "schemes/xutifs26/protocol.go": "280d046b53dff2edebda4e0e5759354558d52834d04b17cff5e5ccff0b6f0ddc",
+    "schemes/yutc25/client_setup.go": "c0d5b102d394c4a4e2bfec29879f5b759cc132be690bc1e7a75de87931166a30",
+    "schemes/yutc25/protocol.go": "f12cedc83b663b9c4a762314f8a4a578ccd822ba6c5c9c7658aa36bf2846d235",
+    "schemes/zhangtpds23/protocol.go": "fdbfd5cf07c87f5f7080fd632f00a900bba0798178f7de01b3bd7311bbde8744"
+  },
+  "archive": "native_measurement_sources.zip",
+  "sha256": "bc0db94faaebcaff7b508b8ddb801d32aadbfbbc3035fb4376fab07916b9e324"
+}

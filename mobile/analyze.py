@@ -32,7 +32,7 @@ def summarize(source, destination, expected_repeats=30, sizes=None, schemes=None
                 if name == 'Xu': assert r['downloadBodyBytes'] == baseline
                 elif name == 'Yu': assert r['downloadBodyBytes'] == baseline + m * 79 * 32
                 else:
-                    extra = r['downloadBodyBytes'] - (140 + m * (690 * 64 + 196))
+                    extra = r['downloadBodyBytes'] - (140 + m * (690 * 64 + 36))
                     assert extra >= 0 and extra % 32 == 0 and extra // 32 <= m * 690 * 12
             for f in files:
                 assert (f['chunks'], f['sectors'], f['challengedChunks']) == (3907, 80, 690)

@@ -1,0 +1,90 @@
+{
+  "protocol": "multiaudit/compact-merkle-shplonk/v2-unmasked",
+  "measurement_platform": "physical iPhone 13",
+  "product_type": "iPhone14,5",
+  "iOS": "26.6.2 (23G90)",
+  "compiler": "Xcode 26.1, Release Swift -O, Go 1.25.4 ios/arm64 c-archive",
+  "installed_bundle": "org.multiaudit.client",
+  "install_database_sequence": 2264,
+  "installed_at_local": "2026-11-25 10:43:22 Asia/Hong_Kong",
+  "configuration": {
+    "m": 40,
+    "B_nominal_MB": 10,
+    "encoded_bytes_per_file": 10001920,
+    "s": 80,
+    "c": 690,
+    "n": 3907
+  },
+  "roles": {
+    "phone": [
+      "owner Setup",
+      "Store",
+      "Challenge",
+      "optional Verify"
+    ],
+    "cloud": [
+      "ProofGen with public SRS"
+    ]
+  },
+  "completed_protocols": [
+    "Xu",
+    "Yu",
+    "MultiAudit"
+  ],
+  "completed_formal_audits": 90,
+  "completed_owner_store_files": 120,
+  "warmup_audits_retained": 9,
+  "statistics": {
+    "Store": "one complete sequential forty-file native tagging and tree construction pass per scheme",
+    "Verify": "median and inclusive IQR of 30 fresh audits after 3 warmups",
+    "sample_removal": false
+  },
+  "energy_measurement": false,
+  "source_sha256": {
+    "go.mod": "3f3181ed23afb5b04942cb760fff4ee4b54249cd4d61f692d55653c97d0ad356",
+    "go.sum": "3bcc1ee96db0eba1a1ee88cc72fb489584ab974261faa4b75bff33f7b170986d",
+    "mobile/MultiAudit.xcodeproj/project.pbxproj": "991b68cf719c03167a331c73aff876ad0ed22aa6d365a752443459ce8a5987e5",
+    "mobile/Sources/MultiAuditApp.swift": "07f993e956b0b1a77341dc2a15dbbb52cf9d7a1d8f88f02ef43730d6039d676b",
+    "mobile/bridge/main.go": "6c793030bd1b78defeaa9c899fa3385e8a48835feb4309e4c3024d43cb74ea4d",
+    "mobile/build.sh": "9e712a54b389cc100801f56befd923e76443acb9d7c216ea041d71cf6374f0b1",
+    "mobile/core/core.go": "075091f9e9d3f7a643e61308a5c031e665c47f0c642d7265b25099339b7de12b",
+    "mobile/core/fixture.go": "1ce1d058babf59435dc30c4eb1222958d61faceeb773699f0c098c15fd5d10c4",
+    "mobile/core/owner.go": "865b83921e058e09f4ce1da4608843bc951bc12d7707f871981a57012bf288b0",
+    "mobile/core/wire.go": "dbe4b7335ca423dfcfbf3928a4fb172217f5f3a1d3e8165ff349ad7c601c6015",
+    "mobile/server/main.go": "c896affc3da039478f7953f7a34efce4bb6486135d80b5bf78cb4fd5ff8d2df6",
+    "schemes/benchcore/arithmetic.go": "3f2c9bf844bbaa3d8e2615eefb40a1c29a0987bbeecec2dd7fc0f3aff27ec4d5",
+    "schemes/benchcore/benchcore.go": "938a9142a54415dc8764430b173631d2ac5eb7e5b03f6ba8f5a791be2fb5ccdb",
+    "schemes/benchcore/msm.go": "4bf31cbdd2967f1906789381ccc2f56f3dcac6b7b8d0849f655d42d483fb6dc6",
+    "schemes/benchcore/protocol_utils.go": "8b2525c8be4b9bb5809c602eec65954d0fccf51df0845c58e06cd707a83e9be4",
+    "schemes/benchcore/storage.go": "f3e768d1e627140fcc9a207f83d0495b30a4576705d34c299d840eaf9b8710c2",
+    "schemes/miaoscis2026/protocol.go": "1a826fb8bf57294439126b99f817ab14e8065756058f76a06672b820f1b6db28",
+    "schemes/multiaudit/client_store.go": "87a836942489286013ce4db7013f8853f453b4d818cb987fc14d69f2f9c54b37",
+    "schemes/multiaudit/encoding.go": "34729524f487c810306e82af7f1861b81ee73ed0ad75936deb46f3e0495d4582",
+    "schemes/multiaudit/files.go": "9c949b40c538af3def700513f0a8341a71fc134fbc767ec31eb60e13edb072a5",
+    "schemes/multiaudit/multiproof.go": "99bd59061758aa4f6fd72bfd94b9097051c9c8e52ad72257417af1acf63d48a6",
+    "schemes/multiaudit/protocol.go": "5cac936c936303aaac819b8da29e4788b5bcaa37a55688a1f67cfbd8608b3f29",
+    "schemes/multiaudit/transcript.go": "a90a6cd94d4e1c6a9a68dd5a23e98a6d6a2d471f87f7326decab7e7df67c351c",
+    "schemes/xutifs26/client_setup.go": "f9f140ec75df3c75b334569e7f993307a21c45f34307f3e0637500fa38b14b23",
+    "schemes/xutifs26/protocol.go": "280d046b53dff2edebda4e0e5759354558d52834d04b17cff5e5ccff0b6f0ddc",
+    "schemes/yutc25/client_setup.go": "c0d5b102d394c4a4e2bfec29879f5b759cc132be690bc1e7a75de87931166a30",
+    "schemes/yutc25/protocol.go": "f12cedc83b663b9c4a762314f8a4a578ccd822ba6c5c9c7658aa36bf2846d235",
+    "schemes/zhangtpds23/protocol.go": "fdbfd5cf07c87f5f7080fd632f00a900bba0798178f7de01b3bd7311bbde8744"
+  },
+  "source_archive": "measurement_sources.zip",
+  "source_archive_sha256": "74a354465ee265da27bc11a8dbe6d9479eea1b9d1ced91e4be5ca93e15729909",
+  "binary_sha256": {
+    "installed_app_executable": "5b69b0fae76a15a7eed2887a4402980a3803f73fd11433d060643e9da4da9add",
+    "cloud_server": "f995908234a7eaea7c82c3c8988d280e24222fe5c840534f1148f9911eed7351",
+    "ios_arm64_archive": "960bc3a94699b54f116dd857265481069d3d8a718024850057d28be04a94f49d"
+  },
+  "measurement_files": {
+    "xu_registry.json": "4441c1f6b2608f059b3102b783fcd3ee5a885d31b16e22de8cec34ed9f2f57fc",
+    "yu_registry.json": "90e6c8e33ce1824014ff326a4e00a8c1e045f10430cc03990c5c0d5e890c17a1",
+    "multiaudit_registry.json": "1379d4297c972241670cf9d29d478bd0b1b8b84ae2a78d34bf4e4c639e7d96ac",
+    "xu_iphone13.json": "4cf01284f4ba9c90f8624022727983d7f1cf706d59e6f56f1326cf0dabb6e118",
+    "multiaudit_iphone13.json": "10725be1ff6278a172d70b03528470b500b0bbbdb7fc17d2f2f4076f4c7629ab",
+    "yu_iphone13.json": "0bbd31b53daaff15e055b32c279e71f3ef15a670f04fa49aeac8eda63d0d7bca"
+  },
+  "measurement_date_local": "2026-11-25T16:15:15.208917+08:00",
+  "proofgen_server": "same source and binary as original measurements, serving locally from the paired Mac; network time excluded from plotted measurements"
+}

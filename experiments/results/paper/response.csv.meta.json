@@ -1,17 +1,17 @@
 {
-  "protocol": "foldaudit/compact-merkle-shplonk/v1",
-  "storage_backend": "owned-scalar-arena/v1",
   "arithmetic_backend": "shared-delayed-reduction/v1",
+  "c": 690,
+  "complete": true,
+  "digest_bytes": 32,
+  "g1_bytes": 64,
+  "go_version": "go1.25.4",
   "goarch": "arm64",
   "goos": "darwin",
-  "go_version": "go1.25.4",
   "m": 40,
   "n": 3907,
-  "s": 80,
+  "protocol": "multiaudit/compact-merkle-shplonk/v2-unmasked",
   "repeats": 30,
-  "g1_bytes": 64,
+  "s": 80,
   "scalar_bytes": 32,
-  "digest_bytes": 32,
-  "c": 690,
-  "complete": true
+  "storage_backend": "owned-scalar-arena/v1"
 }

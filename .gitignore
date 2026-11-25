@@ -1,6 +1,7 @@
 !/paper/
 /paper/*
 !/paper/MultiAudit.tex
+/experiments/results/*
 !/experiments/results/paper/
 /TIFS/
 /TDSC/

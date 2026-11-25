@@ -17,11 +17,11 @@ func (p *Protocol) MarshalProof(proof *AuditProof) ([]byte, error) {
 	if err := p.Config.Validate(); err != nil {
 		return nil, err
 	}
-	if proof == nil || len(proof.FileProofs) != p.Config.NumFiles || len(proof.PiR) != p.Config.NumFiles {
+	if proof == nil || len(proof.FileProofs) != p.Config.NumFiles {
 		return nil, errors.New("invalid proof dimensions")
 	}
 	var b bytes.Buffer
-	b.WriteString("MA01")
+	b.WriteString("MA02")
 	binary.Write(&b, binary.BigEndian, uint32(p.Config.NumFiles))
 	binary.Write(&b, binary.BigEndian, uint32(p.Config.ChallengedChunks))
 	putPoint := func(x *bn256.G1) error {
@@ -37,8 +37,8 @@ func (p *Protocol) MarshalProof(proof *AuditProof) ([]byte, error) {
 	if err := putPoint(proof.CW); err != nil {
 		return nil, err
 	}
-	for i, fp := range proof.FileProofs {
-		if len(fp.Tags) != p.Config.ChallengedChunks || !canonicalScalar(fp.YTilde) || !canonicalScalar(proof.PiR[i].Z) {
+	for _, fp := range proof.FileProofs {
+		if len(fp.Tags) != p.Config.ChallengedChunks || !canonicalScalar(fp.Value) {
 			return nil, errors.New("invalid proof fields")
 		}
 		for _, tag := range fp.Tags {
@@ -56,14 +56,8 @@ func (p *Protocol) MarshalProof(proof *AuditProof) ([]byte, error) {
 			}
 			b.Write(h)
 		}
-		b.Write(benchcore.ScalarBytes(fp.YTilde))
-		if err := putPoint(fp.R); err != nil {
-			return nil, err
-		}
-		if err := putPoint(proof.PiR[i].A); err != nil {
-			return nil, err
-		}
-		b.Write(benchcore.ScalarBytes(proof.PiR[i].Z))
+		b.Write(benchcore.ScalarBytes(fp.Value))
+
 	}
 	return b.Bytes(), nil
 }
@@ -84,7 +78,7 @@ func (p *Protocol) UnmarshalProof(data []byte) (*AuditProof, error) {
 	fail := errors.New("invalid proof encoding")
 	r := bytes.NewReader(data)
 	magic := make([]byte, 4)
-	if _, err := io.ReadFull(r, magic); err != nil || string(magic) != "MA01" {
+	if _, err := io.ReadFull(r, magic); err != nil || string(magic) != "MA02" {
 		return nil, fail
 	}
 	var m, c uint32
@@ -92,7 +86,7 @@ func (p *Protocol) UnmarshalProof(data []byte) (*AuditProof, error) {
 		return nil, fail
 	}
 	// Check the product using division before allocating or multiplying counts.
-	perFile := uint64(c)*64 + 2*64 + 2*32 + 4
+	perFile := uint64(c)*64 + 32 + 4
 	if r.Len() < 128 || uint64(m) > uint64(r.Len()-128)/perFile {
 		return nil, fail
 	}
@@ -119,7 +113,7 @@ func (p *Protocol) UnmarshalProof(data []byte) (*AuditProof, error) {
 		}
 		return x, nil
 	}
-	out := &AuditProof{FileProofs: make([]FileProof, int(m)), PiR: make([]SchnorrProof, int(m))}
+	out := &AuditProof{FileProofs: make([]FileProof, int(m))}
 	var err error
 	if out.CQ, err = point(); err != nil {
 		return nil, err
@@ -146,18 +140,10 @@ func (p *Protocol) UnmarshalProof(data []byte) (*AuditProof, error) {
 				return nil, fail
 			}
 		}
-		if fp.YTilde, err = scalar(); err != nil {
+		if fp.Value, err = scalar(); err != nil {
 			return nil, err
 		}
-		if fp.R, err = point(); err != nil {
-			return nil, err
-		}
-		if out.PiR[i].A, err = point(); err != nil {
-			return nil, err
-		}
-		if out.PiR[i].Z, err = scalar(); err != nil {
-			return nil, err
-		}
+
 	}
 	if r.Len() != 0 {
 		return nil, fail

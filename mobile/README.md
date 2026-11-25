@@ -1,49 +1,34 @@
-# MultiAudit iPhone client
+# iPhone client
 
-The phone performs owner Setup and Store, uploads data and tags, and retains
-its signed public registry. The cloud reconstructs the uploaded authentication
-trees and runs ProofGen with public parameters. Local Verify is optional and
-disabled by default in the interactive UI. A skipped check is never reported as
-a successful verification.
+The phone performs owner Setup, Store, and Challenge. The cloud server runs
+ProofGen. Local Verify is optional and explicitly enabled for the benchmark.
+The client supports MultiAudit, MPA, and Yu's protocol.
 
-Import files from Files, or use the synthetic benchmark collection. Real byte
-files use 31-byte sectors and padding; the benchmark uses canonical 32-byte
-field elements with `n=3907`, `s=80`, and `c=690`. Each benchmark file therefore
-contains 10,001,920 encoded data bytes. Files are preprocessed and uploaded
-sequentially to bound phone memory. Xu and Yu retain their native authentication
-and verification equations, and all three use the existing shared arithmetic.
+## Build and run
 
-Build on a Mac with Xcode and Go:
+Requires macOS, Xcode, Go, a signing team, and an iPhone with Developer Mode enabled.
 
 ```sh
 zsh mobile/build.sh iphoneos
 xcodebuild -project mobile/MultiAudit.xcodeproj -scheme MultiAudit \
-  -configuration Release -sdk iphoneos -destination 'id=YOUR_DEVICE_UDID' \
-  -derivedDataPath /private/tmp/multiaudit-ios-device \
-  DEVELOPMENT_TEAM=YOUR_TEAM -allowProvisioningUpdates build
+  -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+  -derivedDataPath /private/tmp/multiaudit-ios DEVELOPMENT_TEAM=YOUR_TEAM build
+go run ./mobile/server -listen :8788 -out /private/tmp/multiaudit-server
 ```
 
-Install the Release app using Xcode or `xcrun devicectl device install app`.
-Build and run `mobile/server` on the experiment host; the server writes its
-temporary account token to the configured private output directory. The device
-and server must have a working network route. Import the account token into
-the app's connection settings; owner signing and setup secrets are generated
-on the phone and are not sent to the server.
+Install the built app using `xcrun devicectl device install app`. Configure the
+server URL and the account token written to the server's output directory.
+The phone and server need a working IP network connection. Owner setup and
+signing secrets stay on the phone. The experiment uses local HTTP with synthetic data.
 
-The local experiment listener uses HTTP on a private network with synthetic
-data. A deployed personal-storage service needs HTTPS and persistent account
-and key management. This prototype keeps its owner session in memory. It
-does not add encryption or claim transcript confidentiality.
+## Measurements
 
-`run_device.py launch` starts a reproducible physical-device experiment, and
-`run_device.py collect` retrieves the app's JSON observations. All device IDs
-are supplied on the command line. `analyze.py` accepts only complete physical
-iPhone 13 runs with valid native wire sizes and successful verification. It
-keeps warmup observations and rejects incomplete runs rather than inventing
-missing measurements. The automatic experiment enables Verify explicitly;
-`--verify 0` tests the optional response-only path.
+`python3 mobile/run_device.py --help` lists the launch and collection options.
+`python3 mobile/analyze.py --help` lists validation and summary options.
 
-Timing separates native Store, synthetic input construction, wire encoding,
-upload, native proof decoding, native Verify, and complete audit latency.
-CPU time uses `getrusage`; memory is sampled process physical footprint at
-5 ms intervals. Energy is not inferred from CPU time or battery percentage.
+The current Fig. 7 measurement processes forty nominal 10 MB files per protocol, then runs three warmups
+and 30 audits. Store measures native tagging and tree construction. Client Verify
+includes decoding and the Swift/Go interface but excludes network waiting.
+The 40-file results are stored in `experiments/results/paper/mobile/m40/`;
+the earlier 10-file measurements remain in the parent directory.
+Launch with `--files 40 --repeats 30 --warmups 3 --verify 1`.

@@ -18,7 +18,7 @@ import (
 )
 
 // ProtocolID identifies incompatible protocol and measurement formats.
-const ProtocolID = "multiaudit/compact-merkle-shplonk/v1"
+const ProtocolID = "multiaudit/compact-merkle-shplonk/v2-unmasked"
 
 type Config struct {
 	NumFiles         int
@@ -123,21 +123,14 @@ type Challenge struct {
 	Nonce            []byte
 }
 
-type SchnorrProof struct {
-	A *bn256.G1
-	Z *big.Int
-}
-
 // Tags follow Challenge.Indices; auxiliary positions are reconstructed, never sent.
 type FileProof struct {
 	Tags      []*bn256.G1
 	Auxiliary [][]byte
-	YTilde    *big.Int
-	R         *bn256.G1
+	Value     *big.Int
 }
 type AuditProof struct {
 	FileProofs []FileProof
-	PiR        []SchnorrProof
 	CQ, CW     *bn256.G1
 }
 
@@ -270,7 +263,6 @@ func (p *Protocol) ProofGen(stored *StoredBatch, chal *Challenge) (*AuditProof, 
 		return nil, err
 	}
 	proof := &AuditProof{FileProofs: make([]FileProof, p.Config.NumFiles)}
-	masks := make([]*big.Int, p.Config.NumFiles)
 	quotients := make([]benchcore.Poly, p.Config.NumFiles)
 	for i, file := range stored.Files {
 		f, err := p.aggregatePolynomial(file, chal, i)
@@ -278,11 +270,6 @@ func (p *Protocol) ProofGen(stored *StoredBatch, chal *Challenge) (*AuditProof, 
 			return nil, err
 		}
 		q, y := f.DivLinear(chal.EvaluationPoints[i])
-		mu, err := benchcore.RandomScalar(p.rand, false)
-		if err != nil {
-			return nil, err
-		}
-		masks[i] = mu
 		quotients[i] = q
 		aux, err := file.Tree.proof(chal.Indices)
 		if err != nil {
@@ -292,13 +279,11 @@ func (p *Protocol) ProofGen(stored *StoredBatch, chal *Challenge) (*AuditProof, 
 		for j, index := range chal.Indices {
 			tags[j] = cloneG1(file.Tags[index])
 		}
-		proof.FileProofs[i] = FileProof{Tags: tags, Auxiliary: aux, YTilde: benchcore.Add(y, mu), R: benchcore.G1Base(mu)}
+		proof.FileProofs[i] = FileProof{Tags: tags, Auxiliary: aux, Value: y}
 	}
 	T := p.baseTranscript(stored, chal, proof.FileProofs)
 	p.commitQuotients(T, chal, proof, quotients)
-	var err error
-	proof.PiR, err = p.schnorrMaskProofs(T, proof, masks)
-	return proof, err
+	return proof, nil
 }
 
 // Aggregate coefficients before the only two public-SRS commitments.
@@ -321,11 +306,11 @@ func (p *Protocol) Verify(stored *StoredBatch, chal *Challenge, proof *AuditProo
 	if p.validateRegistry(stored) != nil || p.validateChallenge(chal) != nil || proof == nil {
 		return false
 	}
-	if len(proof.FileProofs) != p.Config.NumFiles || len(proof.PiR) != p.Config.NumFiles || !validG1(proof.CQ) || !validG1(proof.CW) {
+	if len(proof.FileProofs) != p.Config.NumFiles || !validG1(proof.CQ) || !validG1(proof.CW) {
 		return false
 	}
 	for i, fp := range proof.FileProofs {
-		if !canonicalScalar(fp.YTilde) || !validG1(fp.R) || len(fp.Tags) != len(chal.Indices) {
+		if !canonicalScalar(fp.Value) || len(fp.Tags) != len(chal.Indices) {
 			return false
 		}
 		leaves := make([][]byte, len(fp.Tags))
@@ -340,11 +325,8 @@ func (p *Protocol) Verify(stored *StoredBatch, chal *Challenge, proof *AuditProo
 		}
 	}
 	T := p.baseTranscript(stored, chal, proof.FileProofs)
-	if !p.verifySchnorrMaskProofs(T, proof) {
-		return false
-	}
 	z, betas := openingWeights(T, proof.CQ, chal.EvaluationPoints)
-	points := make([]*bn256.G1, 0, p.Config.NumFiles*(p.Config.ChallengedChunks+1)+2)
+	points := make([]*bn256.G1, 0, p.Config.NumFiles*p.Config.ChallengedChunks+2)
 	scalars := make([]*big.Int, 0, cap(points))
 	value := benchcore.Zero()
 	for i, fp := range proof.FileProofs {
@@ -352,9 +334,7 @@ func (p *Protocol) Verify(stored *StoredBatch, chal *Challenge, proof *AuditProo
 			points = append(points, tag)
 			scalars = append(scalars, benchcore.Mul(betas[i], chal.Coefficients[i][j]))
 		}
-		points = append(points, fp.R)
-		scalars = append(scalars, betas[i])
-		value = benchcore.Add(value, benchcore.Mul(betas[i], fp.YTilde))
+		value = benchcore.Add(value, benchcore.Mul(betas[i], fp.Value))
 	}
 	points = append(points, p.PP.SRSG1[0], proof.CW)
 	scalars = append(scalars, benchcore.Neg(value), z)
@@ -392,31 +372,6 @@ func (p *Protocol) aggregatePolynomial(file StoredFile, chal *Challenge, fileInd
 	return sum.Polynomial(), nil
 }
 
-func (p *Protocol) schnorrMaskProofs(T []byte, proof *AuditProof, masks []*big.Int) ([]SchnorrProof, error) {
-	proofs := make([]SchnorrProof, len(proof.FileProofs))
-	for i, fp := range proof.FileProofs {
-		t, err := benchcore.RandomScalar(p.rand, false)
-		if err != nil {
-			return nil, err
-		}
-		A := benchcore.G1Base(t)
-		chi := maskChallenge(T, proof, i, fp.R, A)
-		proofs[i] = SchnorrProof{A: A, Z: benchcore.Add(t, benchcore.Mul(chi, masks[i]))}
-	}
-	return proofs, nil
-}
-func (p *Protocol) verifySchnorrMaskProofs(T []byte, proof *AuditProof) bool {
-	for i, pi := range proof.PiR {
-		if !validG1(pi.A) || !canonicalScalar(pi.Z) {
-			return false
-		}
-		chi := maskChallenge(T, proof, i, proof.FileProofs[i].R, pi.A)
-		if !benchcore.G1Eq(benchcore.G1Base(pi.Z), benchcore.G1Add(pi.A, benchcore.G1Mul(proof.FileProofs[i].R, chi))) {
-			return false
-		}
-	}
-	return true
-}
 func canonicalScalar(x *big.Int) bool { return x != nil && x.Sign() >= 0 && x.Cmp(benchcore.Order) < 0 }
 func validG1(x *bn256.G1) bool {
 	if x == nil {

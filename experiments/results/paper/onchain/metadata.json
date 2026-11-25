@@ -1,13 +1,20 @@
 {
-  "measurement_source": "local_evm_transaction_receipts",
-  "m": 1,
+  "measurement_source": "local_evm_batch_transaction_receipts",
+  "complete": true,
   "B_MB": 10,
   "n": 3907,
   "s": 80,
   "c": 690,
-  "encoded_file_bytes": 10001920,
-  "audits_per_scheme": 5,
-  "evm": "Ganache 7.9.2",
+  "m_scan": [
+    10,
+    20,
+    30,
+    40
+  ],
+  "audits_per_scheme_per_m": 5,
+  "node_arch": "arm64",
+  "node_version": "v16.15.1",
+  "evm": "evm version 1.17.10-stable",
   "hardfork": "shanghai",
   "solidity": "solc, the solidity compiler commandline interface\nVersion: 0.8.25+commit.b61c2a91.Darwin.appleclang",
   "compiler_options": [
@@ -16,129 +23,795 @@
     "--evm-version",
     "shanghai"
   ],
+  "block_gas_limit": 5000000000,
+  "transaction_gas_limit": 1000000000,
+  "limit_scope": "raised simulator limits for cost measurement; not a claim of target-chain single-transaction feasibility",
   "execution_gas": "receipt minus exact EIP-2028 intrinsic gas",
-  "eip7623_projection": "reprice exact calldata and measured Shanghai execution; not a Prague/Fusaka measurement",
-  "block_gas_limit": 100000000,
-  "registration_and_deployment": "excluded; roots/SRS bound at deployment, challenge digest owner-registered before each audit",
-  "authentication": "native separate paths for Xu/Yu; native CMM and full Fiat-Shamir/Schnorr checks for FoldAudit",
-  "algebraic_rearrangements": "Xu shifts G2 scalar multiplication to G1; Yu combines (X-z)q+y coefficients; FoldAudit expands data MSM",
+  "registration_and_deployment": "excluded; current ordered roots/IDs and SRS fixed at deployment; owner registers the exact challenge digest before each transaction",
+  "native_batch_semantics": "Xu shared-point global opening check; Yu m independent native file checks inside one transaction; MultiAudit one distinct-point two-witness check",
+  "challenge_encoding": "32-byte indices; Xu one shared expanded challenge, Yu independent per-file expanded challenges, MultiAudit shared indices and per-file coefficients/points",
+  "optimization_version": "memory_reuse_v2_unmasked",
+  "common_optimizations": "all schemes use shared in-place ECADD/ECMUL, reusable point buffers, temporary challenge-hash scratch and SHA-256 helpers; Xu moves G2 multiplication to G1; Yu coefficient-combines its shifted SRS relation; MultiAudit uses reusable canonical-transcript scratch and CMM arrays",
   "native_fixtures_verified": true,
   "public_verifier_account": true,
   "negative_checks": [
     {
-      "scheme": "FoldAudit",
-      "case": "changed challenge",
-      "rejected": true
+      "scheme": "XuTIFS26",
+      "m": 10,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0xdb3cb7f6ade212d39a90aa08a1e966760be185de1dc466ddaa3d8291f3508ea2"
     },
     {
-      "scheme": "FoldAudit",
-      "case": "changed authentication hash",
-      "rejected": true
+      "scheme": "XuTIFS26",
+      "m": 10,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0xe65258c8bff250e4e4cf14c7752dec902734b5cdc45933941fd719eec6436ae5"
     },
     {
-      "scheme": "FoldAudit",
-      "case": "changed evaluation",
-      "rejected": true
+      "scheme": "XuTIFS26",
+      "m": 10,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0x5be868e88631b9f171925ebabc0bbd36681d717c295b9793b2f2da7942d7316a"
     },
     {
-      "scheme": "FoldAudit",
+      "scheme": "XuTIFS26",
+      "m": 20,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0xcbdee65045df8a99961be51923c40532f652bee5f29ccbace49b9f9cc5ae7912"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 20,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0xe65258c8bff250e4e4cf14c7752dec902734b5cdc45933941fd719eec6436ae5"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 20,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0xc030ebd7e5abb38199d3fb2c8de50f7ce5b84cd8028f7316b198d4f96b37c3b1"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 30,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0x9309a6eebdbe0f29f134f3228d967e5e2c066bea2c5e3cd5e65f70d49d354f6b"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 30,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0xe65258c8bff250e4e4cf14c7752dec902734b5cdc45933941fd719eec6436ae5"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 30,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0x8734953ef858fb542111df9c3b4de6d648d0879b7ab49b79cf784000b9ca213c"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 40,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0x7663950557ae04d48eaf212dcce9d1b01c4a361104cd86cae156e1df0f3f3524"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 40,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0xe65258c8bff250e4e4cf14c7752dec902734b5cdc45933941fd719eec6436ae5"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 40,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0x5fb63a5e12af9d72faca3127ad4ae6b68db8ee2e11e5bfedb980d3e65a904cff"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 10,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0x8d28c937e767b003ea851d45d5b47ce8acd9e1003f9187fc018298f1f7b8673b"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 10,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0xa3651bd8a04a70bb27bd5d0e35d8194c8333ea5083ea6d4398a6580eb2982a92"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 10,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0xd24206ccd6cefa0791ccf7b00240e7e20dce5090a6db4977b0a72e281056a75b"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 20,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0x3d802d87854b30193a4a82a8eba5aee8d7d889b60b8c967975e463f5641f665f"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 20,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0xc24b60208f3df77c150ba19aedb38d6f895af36896944819fa0870d52d6825ef"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 20,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0x0ccd2074b85ba0400df54025304d54f9834bd0e301e6405e57d0de391989695e"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 30,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0x0942ee40245f3a16d2b7a5bb40f83f4311343bc0144c984d02de51030e7b2e1d"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 30,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0x3f448a96734c2b0739d19858d5bc4738bf40d34acb3bdb53c53cd9013fd12c13"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 30,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0x6ab31d5871464e10c5e4d980dd9aaa1de82e3e7e9659435021b5a052aa0e9ad4"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 40,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0x1d4f1206783acde6437b0d387374b69ea3063e7431ef9735fcf7c7d7ac14eeb0"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 40,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0x9aeefa7490a73084fd6f33cb48e4f7662c4ce9112a3049f8f73a01a75b2789a2"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 40,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0x62c50338ee91d229fb46e31a9cd7191116b0a06e9a9a84722c85a6c9f648fb9e"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 10,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0x419974972c2d992f3938bfba85618ee9abd914eba662e9243edae637e558b609"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 10,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0xe8a311784966de9cd9cb36eb549c4f70e56c201d054ddce639f0702e33d48aba"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 10,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0x2123064fdb31f9b70c216ff803f65f5376a4c58e7161d78c10446178335cfd90"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 20,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0x4fb8051015d2b388d8555bc975c5506b63686aee451aa8a10d74099758130dbc"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 20,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0x0aa577ac2410e9c90fbc937aaa897e946b49ab2e9dec6a29c9a18aefb4dcfa72"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 20,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0xaf1019162b9c6ae55100fc04e99a60a8ac465ca58a8524121f714f48730afd4c"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 30,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0xc3cd9a8ad20c42fbfed266c28eb4d72fdbc4dff14dbb7d7e0137145932b8a67c"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 30,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0x4f608d3042b5a03e72b33f1e9e410c7895fa3851dcf531b701d57c79dea659b0"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 30,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0xad205d2020b43ed062c880b905a91bc63b055659809aac8ac3047d603bbb9358"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 40,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "transaction_hash": "0xc0f5f350944e207e8860a4c87e62ffda29c238d3ab075ee17881b57284644836"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 40,
+      "case": "truncated proof header",
+      "rejected": true,
+      "transaction_hash": "0x8a3cdbfe0d830587d41fd299501742cd79097e57d944e11697478a4e78b9c6ed"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 40,
+      "case": "changed first sampled tag",
+      "rejected": true,
+      "transaction_hash": "0xb600e599964714e3a2af6be4e06a432bfbf20e0f67cfef5fb3c1573254192137"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 2,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 2,
+      "case": "changed last authentication hash",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 2,
+      "case": "changed first evaluation",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 2,
+      "case": "changed sampled tag",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 2,
       "case": "truncated proof",
-      "rejected": true
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
     },
     {
-      "scheme": "FoldAudit",
-      "case": "changed tag",
-      "rejected": true
+      "scheme": "XuTIFS26",
+      "m": 2,
+      "case": "trailing proof byte",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
     },
     {
-      "scheme": "FoldAudit",
+      "scheme": "XuTIFS26",
+      "m": 2,
+      "case": "noncanonical evaluation",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 2,
+      "case": "swapped file proof records",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 2,
+      "case": "unauthorized challenge update",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 2,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 2,
+      "case": "changed last authentication hash",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 2,
+      "case": "changed first evaluation",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 2,
+      "case": "changed sampled tag",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 2,
+      "case": "truncated proof",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 2,
+      "case": "trailing proof byte",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 2,
+      "case": "noncanonical evaluation",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 2,
+      "case": "swapped file proof records",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 2,
+      "case": "unauthorized challenge update",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "changed issued challenge",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "changed last authentication hash",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "changed first evaluation",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "changed sampled tag",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "truncated proof",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "trailing proof byte",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "noncanonical evaluation",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "swapped file proof records",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
       "case": "changed first witness",
-      "rejected": true
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
     },
     {
-      "scheme": "FoldAudit",
+      "scheme": "MultiAudit",
+      "m": 2,
       "case": "changed second witness",
-      "rejected": true
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
     },
     {
-      "scheme": "FoldAudit",
-      "case": "changed Schnorr response",
-      "rejected": true
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "opposite per-file evaluation changes",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
     },
     {
-      "scheme": "FoldAudit",
+      "scheme": "MultiAudit",
+      "m": 2,
+      "case": "duplicate per-file points",
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 2,
       "case": "unauthorized challenge update",
-      "rejected": true
-    },
-    {
-      "scheme": "YuTC25",
-      "case": "changed challenge",
-      "rejected": true
-    },
-    {
-      "scheme": "YuTC25",
-      "case": "changed authentication hash",
-      "rejected": true
-    },
-    {
-      "scheme": "YuTC25",
-      "case": "changed evaluation",
-      "rejected": true
-    },
-    {
-      "scheme": "YuTC25",
-      "case": "truncated proof",
-      "rejected": true
-    },
-    {
-      "scheme": "YuTC25",
-      "case": "changed tag",
-      "rejected": true
-    },
-    {
-      "scheme": "YuTC25",
-      "case": "unauthorized challenge update",
-      "rejected": true
-    },
-    {
-      "scheme": "XuTIFS26",
-      "case": "changed challenge",
-      "rejected": true
-    },
-    {
-      "scheme": "XuTIFS26",
-      "case": "changed authentication hash",
-      "rejected": true
-    },
-    {
-      "scheme": "XuTIFS26",
-      "case": "changed evaluation",
-      "rejected": true
-    },
-    {
-      "scheme": "XuTIFS26",
-      "case": "truncated proof",
-      "rejected": true
-    },
-    {
-      "scheme": "XuTIFS26",
-      "case": "changed tag",
-      "rejected": true
-    },
-    {
-      "scheme": "XuTIFS26",
-      "case": "unauthorized challenge update",
-      "rejected": true
+      "rejected": true,
+      "test_scope": "Ganache same-bytecode small-parameter native batch smoke"
     }
   ],
-  "bytecode_sha256": "eeb801f046f75d33301d228535320d64230452f7df90c7f1b243bfb593fa8130",
+  "fixtures": [
+    {
+      "scheme": "XuTIFS26",
+      "m": 10,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "5d8979b81543090c6d42f4c58d7a950d14bde450af3ed3ae5c9c4886b6398ae7",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "1afe209d88ec8dcd9dba38f51a1388df9d5d2ee2e70548fd367b03a10054912f",
+      "signed_transaction_body_sha256": "252a27c1fca30aa2b0e9b8e315d7717fd881850ce932732b2d65e513380e46f6"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 20,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "1a5933190209c6e84446849660b00c43517692c859f49e6d498ef1a4d72beab6",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "5c62440c6949aa20ac5644aecc3ab64019f55fe7d0a7f004254f07f67b16da0a",
+      "signed_transaction_body_sha256": "3501736fe36a3c1e8f21154a27758f9f2825bc9d1b4bc9fead3d79a1b71ccd33"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 30,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "e7ae68d34b27767d1344a2cfb784d855229696e5676cea80498720900097291a",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "300f3850fe3f22e3a668b262101626a41cacf494ad08dcd66505f89644a4c49c",
+      "signed_transaction_body_sha256": "8f82c2db04a14a463282ebee2581e4c5320515eb8b2344cfa732493bfb281364"
+    },
+    {
+      "scheme": "XuTIFS26",
+      "m": 40,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "09d52c44d94b296a3b0bde6cbebbdeb5ca3d1e0f4fc518557924dc5ed8a5fc20",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "f566ab44f444ba64d9c206ed69aa909a4c1cc597fd4a9896e264d033469a8b45",
+      "signed_transaction_body_sha256": "367635e4332480f436a39ee047d31f529fbf3ca6853ca002663ace3c1b2b92dc"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 10,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "296fde58655fc713efcf9b73b77bd7480586efe67c59863ba42753eb6dca9a7a",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "69e43cb3bd01c068e8b86afa645d0a4436093b82f06ec563e5a3885ff99764a7",
+      "signed_transaction_body_sha256": "605f74e2287b67122b76b2ba7cd9411819521ca9cff2942ce1d1e79357f26f58"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 20,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "9b47ad0ae12b5187841b54c02118586b2c114d77b655aed0e9beef2489be8275",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "ad3c75247d768882433afcdb568bc0a1081bb4df09d8a827143cf199a3558d9a",
+      "signed_transaction_body_sha256": "c2de16420f02c684ef4ad677a2f716b169c5bbcde8f257437d2052a8ccc9c52b"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 30,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "f0fd9f9f9fe9b5eb143e7f4b53592a4fa179c113cfef6e712aa430f2ba79dafe",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "174394a9bb25cb687e1a25b317faed8f2f39f812da668d602fc71deb940ef397",
+      "signed_transaction_body_sha256": "1d3cfb8d1a5d636ec8a93bf7bf620938da5da27dfa92077aaa76009d0073a426"
+    },
+    {
+      "scheme": "YuTC25",
+      "m": 40,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "f00eb8b85dec33330b63f64cbdb024e22d04fdc66cab3bd49709fd726a1aece1",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "7e8110e7a2380b2c5ef57bc5535f7e29fd9f4765ff78bfd8dae06b679ecdef57",
+      "signed_transaction_body_sha256": "e66781a646c3175c42b0aab549b78981de450dd6fa0f7d16f8dd25b1fad7a1f6"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 10,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "726f0881fb849df0a897eb396b1acb0c790c7ca1fe21731a5e00155b191b5429",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "e5a6f0824237a25be2f0819b5ea9d6ee20603a61cd1fc021104c088f703eee4a",
+      "signed_transaction_body_sha256": "9bfe196285c7495b829de93fde9d941358a6242607c0939da1d8a1147d9d9188"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 20,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "ded84437b8dc452545461fd8438786e12c8be1fdab1a49def4ad91d6f427c4e2",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "b26766f916a57adf2562b66aad4b8408499661342befc932161cd7a1c08e0b0d",
+      "signed_transaction_body_sha256": "87d4ee725e123dde866a724dd00a068a5952deaf1f6f973eafdfb206942df5ce"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 30,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "743bb85323ca7ed395af0377397188680f60ba33419cae3fb18d1480cf76f077",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "2e617e0fc6e55102d89743c78690fa78cb64ff6f4421489c5004537f5fcc8cf0",
+      "signed_transaction_body_sha256": "18cefc4ef8858c63040a082b61b6d7c1a6d0d5014418457e5234974955692a8c"
+    },
+    {
+      "scheme": "MultiAudit",
+      "m": 40,
+      "n": 3907,
+      "s": 80,
+      "c": 690,
+      "audits": 5,
+      "sha256": "16123bf29fb4ef37960d4e275c8e55e59d64f74558aab0e19eff3052affbddd3",
+      "contract": "0xf2e246bb76df876cef8b38ae84130f4f55de395b",
+      "transition_result_sha256": "5a7652284bf439e4713346f584bde71fba8ba65519224322e0acd9499b59c181",
+      "signed_transaction_body_sha256": "b8522b08e3c56abc58bb831668973849930ca9168b0cb9afdbdb3b78230df1f3"
+    }
+  ],
   "source_sha256": {
-    "experiments/onchain/AuditVerifier.sol": "d0fe907d79491c7b0f7f859fe9dd668d12c36810db107bf8690201fdcc1ebb34",
-    "experiments/onchain/fixtures.go": "d0ca4f3507c936c63136372643d7f24f9d023d2eb557670468b50fb17dde9149",
-    "experiments/onchain/run.cjs": "666b936b1053475506faba17d9a8ae04492297d8683119dfdad6cba3250c5af2",
-    "schemes/foldaudit/protocol.go": "7bd4fce113a8cb74096d40c816b4e5ae009986bf6c173af3572121c20061cc01",
-    "schemes/foldaudit/transcript.go": "223b507d7b275110b586c426143a7ce9082b5f71898ee96d8494acee6af71387",
-    "schemes/xutifs26/protocol.go": "b78fa74c1f4f3a9542ef97b87f869fef822e2ce7a5d5625ed221f567e5fb698f",
-    "schemes/yutc25/protocol.go": "a7ae14d0aa6fe7265132dc448a94ac2a8185356e7e8bcdee84a7570d6102b091"
-  }
+    "experiments/onchain/batch/AuditBatchVerifier.sol": "25fd46a4501535e3acf638348cbcb4b0c956bfa18839486c21b18e11c55636de",
+    "experiments/onchain/batch/fixtures.go": "db588108d2c023771bb09645c337815b8dd8875fccbe5057e528e7f61131bae3",
+    "experiments/onchain/batch/run.cjs": "be24049cb96be8e53dc972008d1cdfbcf61ab04350b78bfe37adcde669c44ee8",
+    "schemes/multiaudit/client_store.go": "87a836942489286013ce4db7013f8853f453b4d818cb987fc14d69f2f9c54b37",
+    "schemes/multiaudit/encoding.go": "34729524f487c810306e82af7f1861b81ee73ed0ad75936deb46f3e0495d4582",
+    "schemes/multiaudit/files.go": "9c949b40c538af3def700513f0a8341a71fc134fbc767ec31eb60e13edb072a5",
+    "schemes/multiaudit/multiproof.go": "99bd59061758aa4f6fd72bfd94b9097051c9c8e52ad72257417af1acf63d48a6",
+    "schemes/multiaudit/protocol.go": "5cac936c936303aaac819b8da29e4788b5bcaa37a55688a1f67cfbd8608b3f29",
+    "schemes/multiaudit/transcript.go": "a90a6cd94d4e1c6a9a68dd5a23e98a6d6a2d471f87f7326decab7e7df67c351c",
+    "schemes/xutifs26/client_setup.go": "f9f140ec75df3c75b334569e7f993307a21c45f34307f3e0637500fa38b14b23",
+    "schemes/xutifs26/protocol.go": "280d046b53dff2edebda4e0e5759354558d52834d04b17cff5e5ccff0b6f0ddc",
+    "schemes/yutc25/client_setup.go": "c0d5b102d394c4a4e2bfec29879f5b759cc132be690bc1e7a75de87931166a30",
+    "schemes/yutc25/protocol.go": "f12cedc83b663b9c4a762314f8a4a578ccd822ba6c5c9c7658aa36bf2846d235",
+    "schemes/benchcore/arithmetic.go": "3f2c9bf844bbaa3d8e2615eefb40a1c29a0987bbeecec2dd7fc0f3aff27ec4d5",
+    "schemes/benchcore/benchcore.go": "938a9142a54415dc8764430b173631d2ac5eb7e5b03f6ba8f5a791be2fb5ccdb",
+    "schemes/benchcore/msm.go": "4bf31cbdd2967f1906789381ccc2f56f3dcac6b7b8d0849f655d42d483fb6dc6",
+    "schemes/benchcore/protocol_utils.go": "8b2525c8be4b9bb5809c602eec65954d0fccf51df0845c58e06cd707a83e9be4",
+    "schemes/benchcore/storage.go": "f3e768d1e627140fcc9a207f83d0495b30a4576705d34c299d840eaf9b8710c2",
+    "go.mod": "3f3181ed23afb5b04942cb760fff4ee4b54249cd4d61f692d55653c97d0ad356",
+    "go.sum": "3bcc1ee96db0eba1a1ee88cc72fb489584ab974261faa4b75bff33f7b170986d",
+    "experiments/onchain/batch/run_transition.cjs": "46c66ab9bef029b30e0e3fcd78b5a561aec32a787969fd836774ecb205a99c78"
+  },
+  "bytecode_sha256": "18948a38befafc05ee197420c42d2935d366739a4cf8e686f29614cdc146a4cc",
+  "evm_backend": "Geth offline signed-transaction state transition",
+  "engine_binary_sha256": "89240ff3a51ca44e08d28fa4001c55ea09d25d80bb19fda3a45a06bd816a4fb7",
+  "engine_arguments": [
+    "t8n",
+    "--state.fork",
+    "Shanghai",
+    "--state.chainid",
+    "20261124",
+    "--state.reward",
+    "-1"
+  ],
+  "negative_transaction_gas_limit": 400000000,
+  "block_context": "one independent Shanghai block per fixture; constructor and owner challenge registrations execute before verification; their gas is excluded from plotted rows",
+  "temporary_input_directory": "/private/tmp/multiaudit-t8n-A4bZNe",
+  "smoke_evm": "Ganache 7.9.2",
+  "smoke_parameters": {
+    "n": 64,
+    "s": 8,
+    "c": 20,
+    "m_scan": [
+      2
+    ]
+  },
+  "smoke_positive_transactions": 3,
+  "merged_workers": [
+    {
+      "part": "parts/m10-XuTIFS26",
+      "scheme": "XuTIFS26",
+      "selected_m": [
+        10
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m20-XuTIFS26",
+      "scheme": "XuTIFS26",
+      "selected_m": [
+        20
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m30-XuTIFS26",
+      "scheme": "XuTIFS26",
+      "selected_m": [
+        30
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m40-XuTIFS26",
+      "scheme": "XuTIFS26",
+      "selected_m": [
+        40
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m10-YuTC25",
+      "scheme": "YuTC25",
+      "selected_m": [
+        10
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m20-YuTC25",
+      "scheme": "YuTC25",
+      "selected_m": [
+        20
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m30-YuTC25",
+      "scheme": "YuTC25",
+      "selected_m": [
+        30
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m40-YuTC25",
+      "scheme": "YuTC25",
+      "selected_m": [
+        40
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m10-MultiAudit",
+      "scheme": "MultiAudit",
+      "selected_m": [
+        10
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m20-MultiAudit",
+      "scheme": "MultiAudit",
+      "selected_m": [
+        20
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m30-MultiAudit",
+      "scheme": "MultiAudit",
+      "selected_m": [
+        30
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    },
+    {
+      "part": "parts/m40-MultiAudit",
+      "scheme": "MultiAudit",
+      "selected_m": [
+        40
+      ],
+      "worker_complete": true,
+      "selection_rule": "five successful receipts and three negative checks per selected fixture. Later unused fixtures need not run"
+    }
+  ],
+  "successful_batch_transactions": 60,
+  "encoded_file_bytes": 10001920,
+  "calldata_gas": "4 * zero_bytes + 16 * nonzero_bytes. Excludes the 21000 transaction base cost",
+  "source_archive_sha256": "0bbc9496878116fcb559e961b9e027b203bd2f67b5d50cda814382a213ede353",
+  "gas_csv_sha256": "e1eee3acf24a4e5abb64469030447f2700f182064680c74ab41127f138a6fb4b"
 }

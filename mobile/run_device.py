@@ -29,7 +29,9 @@ else:
     cmd += ['copy', 'from', '--device', a.device, '--domain-type', 'appDataContainer',
             '--domain-identifier', 'org.multiaudit.client', '--source', 'Documents/multiaudit-results.json',
             '--destination', str(a.output)]
-subprocess.run(cmd, check=True)
+completed = subprocess.run(cmd)
+if completed.returncode:
+    raise SystemExit(completed.returncode)
 if a.action == 'collect':
     report = json.loads(a.output.read_text())
     print(json.dumps({'platform': report['platform'], 'model': report['model'],

@@ -29,7 +29,7 @@ func (p *Protocol) baseTranscript(stored *StoredBatch, chal *Challenge, fps []Fi
 		for _, tag := range fp.Tags {
 			parts = append(parts, g1Bytes(tag))
 		}
-		parts = append(parts, benchcore.ScalarBytes(fp.YTilde), g1Bytes(fp.R))
+		parts = append(parts, benchcore.ScalarBytes(fp.Value))
 	}
 	return benchcore.HashBytes("MultiAudit", parts...)
 }
@@ -79,7 +79,4 @@ func openingWeights(T []byte, CQ *bn256.G1, rs []*big.Int) (*big.Int, []*big.Int
 		power = benchcore.Mul(power, gamma)
 	}
 	return z, betas
-}
-func maskChallenge(T []byte, proof *AuditProof, i int, R, A *bn256.G1) *big.Int {
-	return hashToField("multiaudit:mask", nil, T, g1Bytes(proof.CQ), g1Bytes(proof.CW), benchcore.IntBytes(i+1), g1Bytes(R), g1Bytes(A))
 }

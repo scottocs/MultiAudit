@@ -8,7 +8,7 @@ import statistics
 import sys
 from collections import defaultdict
 from pathlib import Path
-from measurement_provenance import canonicalize
+from measurement_provenance import verify_sources
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT = ROOT / 'experiments/results/paper/runtime.csv'
@@ -17,17 +17,19 @@ SCHEMES = ['XuTIFS26', 'ZhangTPDS23', 'YuTC25', 'MiaoSCIS2026', 'MultiAudit']
 
 def read_csv(path):
     with path.open(newline='') as stream:
-        return canonicalize(list(csv.DictReader(stream)))
+        return list(csv.DictReader(stream))
 
 
 def validate(path=DEFAULT):
+    provenance = json.loads((path.parent / 'native_provenance.json').read_text())
+    verify_sources(provenance['source_sha256'], path.parent / provenance['archive'], provenance['sha256'])
     rows = read_csv(path)
-    meta = canonicalize(json.loads(Path(str(path) + '.meta.json').read_text()))
+    meta = json.loads(Path(str(path) + '.meta.json').read_text())
     assert meta['profile'] == 'file-count'
     assert (meta['B_MB'], meta['s'], meta['c'], meta['n']) == (10, 80, 690, 3907)
     assert meta['m_scan'] == [10, 20, 30, 40] and meta['complete'] is True
     assert meta['online_repeats'] == 30 and meta['goarch'] == 'arm64'
-    assert meta['multiaudit_protocol'] == 'multiaudit/compact-merkle-shplonk/v1'
+    assert meta['multiaudit_protocol'] == 'multiaudit/compact-merkle-shplonk/v2-unmasked'
     assert meta['arithmetic_backend'] == 'shared-delayed-reduction/v1'
     assert meta['storage_backend'] == 'owned-scalar-arena/v1'
     expected = {(m, name, phase) for m in meta['m_scan'] for name in SCHEMES
@@ -77,16 +79,16 @@ def validate(path=DEFAULT):
 
 
 def validate_response(path):
-    meta = canonicalize(json.loads(Path(str(path) + '.meta.json').read_text()))
+    meta = json.loads(Path(str(path) + '.meta.json').read_text())
     assert (meta['m'], meta['n'], meta['s'], meta['c'], meta['repeats']) == (40, 3907, 80, 690, 30)
-    assert meta['protocol'] == 'multiaudit/compact-merkle-shplonk/v1' and meta['goarch'] == 'arm64' and meta['complete'] is True
+    assert meta['protocol'] == 'multiaudit/compact-merkle-shplonk/v2-unmasked' and meta['goarch'] == 'arm64' and meta['complete'] is True
     assert (meta['g1_bytes'], meta['scalar_bytes'], meta['digest_bytes']) == (64, 32, 32)
     rows = read_csv(path)
     assert sorted(int(r['repeat']) for r in rows) == list(range(1, 31))
     assert len({r['proof_sha256'] for r in rows}) == 30
     for row in rows:
         assert row['ok'] == 'true' and row['c'] == '690'
-        assert int(row['wire_bytes']) == 172 + (40 * 690 + 82) * 64 + 80 * 32 + int(row['auxiliary_hashes']) * 32
+        assert int(row['wire_bytes']) == 172 + (40 * 690 + 2) * 64 + 40 * 32 + int(row['auxiliary_hashes']) * 32
     return rows
 
 
@@ -99,5 +101,8 @@ if __name__ == '__main__':
               'summary_rows': len(rows), 'all_proofs_accepted': True,
               'statistics_match_raw_samples': True,
               'sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in files}}
-    (path.parent / 'validation.json').write_text(json.dumps(report, indent=2) + '\n')
+    destination = path.parent / 'validation.json'
+    saved = json.loads(destination.read_text()) if destination.exists() else {}
+    saved.update(report)
+    destination.write_text(json.dumps(saved, indent=2) + '\n')
     print(json.dumps(report, indent=2))
